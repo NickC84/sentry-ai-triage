@@ -89,38 +89,35 @@ class SentryClient {
 
   /// Discover the organizations and projects a token can access — lets the
   /// Settings page offer pickers instead of asking users to type slugs.
+  /// Uses GET /api/0/projects/ (each project carries its org slug) because it
+  /// only needs project:read — the organizations endpoint would demand the
+  /// extra org:read scope our token guide doesn't ask for.
   static Future<List<Map<String, Object?>>> discover({
     required String baseUrl,
     required String token,
   }) async {
     final client = http.Client();
-    final headers = {'Authorization': 'Bearer $token'};
     try {
-      final orgResp = await client
-          .get(Uri.parse('$baseUrl/api/0/organizations/'), headers: headers)
+      final resp = await client
+          .get(Uri.parse('$baseUrl/api/0/projects/'),
+              headers: {'Authorization': 'Bearer $token'})
           .timeout(_timeout);
-      if (orgResp.statusCode != 200) {
+      if (resp.statusCode != 200) {
         throw Exception(
-            'Sentry replied ${orgResp.statusCode} — check the token/scopes');
+            'Sentry replied ${resp.statusCode} — check the token/scopes');
       }
-      final orgs = (jsonDecode(orgResp.body) as List<dynamic>)
-          .map((o) => (o as Map<String, dynamic>)['slug'].toString())
-          .toList();
-      final out = <Map<String, Object?>>[];
-      for (final slug in orgs.take(10)) {
-        var projects = <String>[];
-        final pResp = await client
-            .get(Uri.parse('$baseUrl/api/0/organizations/$slug/projects/'),
-                headers: headers)
-            .timeout(_timeout);
-        if (pResp.statusCode == 200) {
-          projects = (jsonDecode(pResp.body) as List<dynamic>)
-              .map((p) => (p as Map<String, dynamic>)['slug'].toString())
-              .toList();
-        }
-        out.add({'org': slug, 'projects': projects});
+      final byOrg = <String, List<String>>{};
+      for (final p in jsonDecode(resp.body) as List<dynamic>) {
+        final m = p as Map<String, dynamic>;
+        final org =
+            ((m['organization'] as Map<String, dynamic>?)?['slug'] ?? '')
+                .toString();
+        if (org.isEmpty) continue;
+        byOrg.putIfAbsent(org, () => []).add(m['slug'].toString());
       }
-      return out;
+      return [
+        for (final e in byOrg.entries) {'org': e.key, 'projects': e.value}
+      ];
     } finally {
       client.close();
     }
