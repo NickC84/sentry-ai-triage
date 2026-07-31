@@ -1491,6 +1491,12 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ),
                           ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(t('settingsTokenSteps'),
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
+                          ),
                           _field('SENTRY_TOKEN', t('settingsToken'),
                               secret: true),
                           Padding(

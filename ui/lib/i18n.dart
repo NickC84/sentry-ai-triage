@@ -232,6 +232,10 @@ class I18n {
     'settingsLoadFail': ['Failed to load settings: {e}', '讀取設定失敗：{e}'],
     'settingsSaveFail': ['Failed to save: {e}', '儲存失敗：{e}'],
     'settingsGetToken': ['Create a read-only token on Sentry ↗', '去 Sentry 建立唯讀 token ↗'],
+    'settingsTokenSteps': [
+      'On that page: "Create New Token" → tick only project:read and event:read → copy the token and paste it below.',
+      '在該頁按「Create New Token」→ 只勾 project:read 和 event:read 兩個權限 → 複製 token 貼到下面欄位。'
+    ],
     'settingsDetect': ['Find my orgs / projects', '自動偵測 org / project'],
     'settingsDetecting': ['Detecting…', '偵測中…'],
     'settingsDetectHint': [
