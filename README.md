@@ -1,6 +1,6 @@
 # Sentry AI Triage
 
-**English** · [繁體中文](#sentry-ai-triage-繁體中文)
+**English** · [繁體中文](#zh-hant)
 
 Self-hosted Sentry issue triage with AI analysis — powered by the Claude
 subscription you already pay for, instead of a separate AI add-on.
@@ -143,6 +143,8 @@ docs/      original design spec (zh-Hant, historical)
 [MIT](LICENSE)
 
 ---
+
+<a name="zh-hant"></a>
 
 # Sentry AI Triage（繁體中文）
 
