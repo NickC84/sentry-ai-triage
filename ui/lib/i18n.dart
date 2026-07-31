@@ -220,6 +220,7 @@ class I18n {
       'e.g. "Flutter kiosk app on low-end Android TV boxes; video playback is core; device/network crashes are usually not fixable."',
       '例：「跑在低階 Android TV 盒上的 Flutter 看板 App；影片播放是核心功能；裝置/網路類崩潰通常不可修。」'
     ],
+    'settingsDarkMode': ['Dark theme', '深色主題'],
     // help / user guide
     'settingsHelp': [
       'User guide — what every button does',
@@ -302,6 +303,27 @@ class I18n {
       '選用——要一鍵開票 / 產草稿 PR 才需要'
     ],
   };
+}
+
+/// Light / dark theme preference. Persists to localStorage; first visit
+/// follows the OS preference.
+class AppTheme {
+  static final ValueNotifier<String> mode = ValueNotifier(_initial());
+
+  static String _initial() {
+    final saved = html.window.localStorage['triage_theme'];
+    if (saved == 'light' || saved == 'dark') return saved!;
+    final prefersDark =
+        html.window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? 'dark' : 'light';
+  }
+
+  static bool get isDark => mode.value == 'dark';
+
+  static void toggle() {
+    mode.value = isDark ? 'light' : 'dark';
+    html.window.localStorage['triage_theme'] = mode.value;
+  }
 }
 
 /// Shorthand.

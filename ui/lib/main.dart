@@ -17,12 +17,12 @@ class TriageApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild the whole tree when the locale toggles. TriagePage must NOT be
-    // const here — a const child is skipped on rebuild, which would freeze
-    // the language.
-    return ValueListenableBuilder<String>(
-      valueListenable: I18n.locale,
-      builder: (_, __, ___) => MaterialApp(
+    // Rebuild the whole tree when the locale or theme toggles. TriagePage
+    // must NOT be const here — a const child is skipped on rebuild, which
+    // would freeze the language.
+    return AnimatedBuilder(
+      animation: Listenable.merge([I18n.locale, AppTheme.mode]),
+      builder: (_, __) => MaterialApp(
         title: t('appTitle'),
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -30,6 +30,13 @@ class TriageApp extends StatelessWidget {
           colorSchemeSeed: Colors.indigo,
           visualDensity: VisualDensity.compact,
         ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.indigo,
+          brightness: Brightness.dark,
+          visualDensity: VisualDensity.compact,
+        ),
+        themeMode: AppTheme.isDark ? ThemeMode.dark : ThemeMode.light,
         // ignore: prefer_const_constructors
         home: TriagePage(),
       ),
@@ -1555,6 +1562,19 @@ class _SettingsPageState extends State<SettingsPage> {
                             onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (_) => const HelpPage())),
+                          ),
+                        ),
+                        Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ValueListenableBuilder<String>(
+                            valueListenable: AppTheme.mode,
+                            builder: (_, __, ___) => SwitchListTile(
+                              secondary:
+                                  const Icon(Icons.dark_mode_outlined),
+                              title: Text(t('settingsDarkMode')),
+                              value: AppTheme.isDark,
+                              onChanged: (_) => AppTheme.toggle(),
+                            ),
                           ),
                         ),
                         _section(t('settingsSentry'), [
