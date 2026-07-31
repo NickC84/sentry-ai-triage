@@ -12,6 +12,7 @@ import 'db.dart';
 import 'github.dart';
 import 'ingest.dart';
 import 'pr_maker.dart';
+import 'sentry_client.dart';
 
 /// Local backend for the web UI: exposes triage.db as a JSON API, accepts
 /// manual triage writes, on-demand AI analysis, Sentry ingest, GitHub
@@ -66,6 +67,7 @@ class ApiServer {
       ..post('/api/config', _setConfig)
       // Sentry ingest from the UI
       ..post('/api/ingest', _ingest)
+      ..post('/api/sentry/discover', _discoverSentry)
       // Features (manual backlog items)
       ..post('/api/features', _createFeature)
       ..post('/api/issues/<id>/analyze-feature', _analyzeFeature)
@@ -144,6 +146,29 @@ class ApiServer {
       return _json({'error': 'Ingest failed: $e'}, status: 500);
     } finally {
       _ingestRunning = false;
+    }
+  }
+
+  /// Settings helper: list the orgs/projects a token can reach, so the UI
+  /// can offer pickers instead of hand-typed slugs. Accepts a token in the
+  /// body (masked/empty falls back to the saved one).
+  Future<Response> _discoverSentry(Request r) async {
+    Map<String, dynamic> body = {};
+    try {
+      body = jsonDecode(await r.readAsString()) as Map<String, dynamic>;
+    } catch (_) {}
+    var token = (body['token'] ?? '').toString().trim();
+    var base = (body['base_url'] ?? '').toString().trim();
+    if (token.isEmpty || token == _mask) token = cfg.token;
+    if (base.isEmpty) base = cfg.baseUrl;
+    if (token.isEmpty) {
+      return _json({'error': 'No token provided'}, status: 400);
+    }
+    try {
+      final orgs = await SentryClient.discover(baseUrl: base, token: token);
+      return _json({'orgs': orgs});
+    } catch (e) {
+      return _json({'error': '$e'}, status: 502);
     }
   }
 

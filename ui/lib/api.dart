@@ -178,6 +178,22 @@ class TriageApi {
     }
   }
 
+  /// Settings helper: discover orgs/projects reachable with a token
+  /// (proxied through the backend to avoid CORS).
+  Future<List<dynamic>> discoverSentry(
+      {required String token, required String sentryBaseUrl}) async {
+    final resp = await http.post(
+      Uri.parse('$baseUrl/api/sentry/discover'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'token': token, 'base_url': sentryBaseUrl}),
+    );
+    final body = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    if (resp.statusCode != 200) {
+      throw Exception(body['error']?.toString() ?? 'Discover failed');
+    }
+    return (body['orgs'] as List<dynamic>? ?? []);
+  }
+
   /// Trigger a Sentry ingest run; returns the summary map.
   Future<Map<String, dynamic>> ingest() async {
     final resp = await http.post(Uri.parse('$baseUrl/api/ingest'));

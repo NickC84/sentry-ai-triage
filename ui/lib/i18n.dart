@@ -231,6 +231,26 @@ class I18n {
     'settingsAppRepo': ['App repo path (for feasibility analysis)', 'App repo 路徑（需求可行性分析用）'],
     'settingsLoadFail': ['Failed to load settings: {e}', '讀取設定失敗：{e}'],
     'settingsSaveFail': ['Failed to save: {e}', '儲存失敗：{e}'],
+    'settingsGetToken': ['Create a read-only token on Sentry ↗', '去 Sentry 建立唯讀 token ↗'],
+    'settingsDetect': ['Find my orgs / projects', '自動偵測 org / project'],
+    'settingsDetecting': ['Detecting…', '偵測中…'],
+    'settingsDetectHint': [
+      'Paste the token above first',
+      '請先在上面貼上 token'
+    ],
+    'settingsDetectEmpty': [
+      'Token works, but no organizations were found',
+      'token 有效，但找不到任何組織'
+    ],
+    'settingsDetectPick': ['Tap to fill in:', '點一下自動填入：'],
+    'settingsAdvanced': [
+      'Advanced — the defaults work out of the box',
+      '進階設定——預設值可直接使用'
+    ],
+    'settingsGithubHint': [
+      'Optional — only needed for one-click tickets / draft PRs',
+      '選用——要一鍵開票 / 產草稿 PR 才需要'
+    ],
   };
 }
 

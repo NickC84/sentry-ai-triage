@@ -17,7 +17,9 @@ class TriageApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild the whole tree when the locale toggles.
+    // Rebuild the whole tree when the locale toggles. TriagePage must NOT be
+    // const here — a const child is skipped on rebuild, which would freeze
+    // the language.
     return ValueListenableBuilder<String>(
       valueListenable: I18n.locale,
       builder: (_, __, ___) => MaterialApp(
@@ -28,7 +30,8 @@ class TriageApp extends StatelessWidget {
           colorSchemeSeed: Colors.indigo,
           visualDensity: VisualDensity.compact,
         ),
-        home: const TriagePage(),
+        // ignore: prefer_const_constructors
+        home: TriagePage(),
       ),
     );
   }
@@ -446,14 +449,20 @@ class _TriagePageState extends State<TriagePage> {
     ]);
   }
 
+  // Hand-rolled pills instead of Chip — Material's Chip mis-measures CJK
+  // text on Flutter Web and clips the label.
   List<Widget> _summaryChips(Summary s) {
     Widget chip(String label, int n, Color c) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
-          child: Chip(
-            visualDensity: VisualDensity.compact,
-            backgroundColor: c.withOpacity(0.12),
-            side: BorderSide(color: c.withOpacity(0.4)),
-            label: Text('$label $n', style: const TextStyle(fontSize: 12)),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: c.withOpacity(0.12),
+              border: Border.all(color: c.withOpacity(0.4)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text('$label $n', style: const TextStyle(fontSize: 12)),
           ),
         );
     return [
@@ -522,15 +531,31 @@ class _TriagePageState extends State<TriagePage> {
     ]);
   }
 
-  Widget _sortChip(String label, bool selected, VoidCallback onTap) =>
-      ChoiceChip(
-        label: Text(label,
-            maxLines: 1, softWrap: false, style: const TextStyle(fontSize: 12)),
-        selected: selected,
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        onSelected: (_) => setState(onTap),
-      );
+  // Custom toggle pill (see _summaryChips for why this isn't a ChoiceChip).
+  Widget _sortChip(String label, bool selected, VoidCallback onTap) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(onTap),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? cs.secondaryContainer : null,
+          border: Border.all(
+              color:
+                  selected ? cs.secondaryContainer : Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (selected) ...[
+            Icon(Icons.check, size: 14, color: cs.onSecondaryContainer),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ]),
+      ),
+    );
+  }
 
   Widget _listHeader(int shown) {
     return Padding(
@@ -1235,6 +1260,10 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _saving = false;
   String? _error;
 
+  // Sentry org/project discovery state.
+  bool _detecting = false;
+  List<dynamic>? _discovered;
+
   static const _textKeys = [
     'SENTRY_BASE_URL',
     'SENTRY_ORG',
@@ -1305,6 +1334,79 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// Call the backend to list orgs/projects for the pasted token, then let
+  /// the user tap to fill the slug fields.
+  Future<void> _detect() async {
+    final token = _ctls['SENTRY_TOKEN']!.text.trim();
+    if (token.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(t('settingsDetectHint'))));
+      return;
+    }
+    setState(() {
+      _detecting = true;
+      _discovered = null;
+    });
+    try {
+      final orgs = await widget.api.discoverSentry(
+        token: token,
+        sentryBaseUrl: _ctls['SENTRY_BASE_URL']!.text.trim(),
+      );
+      setState(() => _discovered = orgs);
+      if (orgs.isEmpty && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t('settingsDetectEmpty'))));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tp('genericFail', {'e': e}))));
+      }
+    } finally {
+      if (mounted) setState(() => _detecting = false);
+    }
+  }
+
+  /// Tap-to-fill chips for every discovered org/project pair.
+  Widget _discoveredPicker() {
+    final orgs = _discovered;
+    if (orgs == null || orgs.isEmpty) return const SizedBox.shrink();
+    final chips = <Widget>[];
+    for (final o in orgs) {
+      final org = (o as Map<String, dynamic>)['org'].toString();
+      final projects = (o['projects'] as List<dynamic>? ?? []);
+      if (projects.isEmpty) {
+        chips.add(OutlinedButton(
+          onPressed: () =>
+              setState(() => _ctls['SENTRY_ORG']!.text = org),
+          child: Text(org),
+        ));
+      }
+      for (final p in projects) {
+        chips.add(OutlinedButton.icon(
+          icon: const Icon(Icons.bolt, size: 16),
+          label: Text('$org / $p'),
+          onPressed: () => setState(() {
+            _ctls['SENTRY_ORG']!.text = org;
+            _ctls['SENTRY_PROJECT']!.text = p.toString();
+          }),
+        ));
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(t('settingsDetectPick'),
+              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 8, children: chips),
+        ],
+      ),
+    );
+  }
+
   Widget _field(String key, String label,
       {bool secret = false, int maxLines = 1, String? hint}) {
     return Padding(
@@ -1372,13 +1474,60 @@ class _SettingsPageState extends State<SettingsPage> {
                       padding: const EdgeInsets.all(20),
                       children: [
                         _section(t('settingsSentry'), [
-                          _field('SENTRY_ORG', t('settingsOrg')),
-                          _field('SENTRY_PROJECT', t('settingsProject')),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  final base = _ctls['SENTRY_BASE_URL']!
+                                      .text
+                                      .trim();
+                                  _openUrl(
+                                      '${base.isEmpty ? 'https://sentry.io' : base}/settings/account/api/auth-tokens/');
+                                },
+                                icon: const Icon(Icons.open_in_new, size: 16),
+                                label: Text(t('settingsGetToken')),
+                              ),
+                            ),
+                          ),
                           _field('SENTRY_TOKEN', t('settingsToken'),
                               secret: true),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: OutlinedButton.icon(
+                                onPressed: _detecting ? null : _detect,
+                                icon: _detecting
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2))
+                                    : const Icon(Icons.travel_explore,
+                                        size: 16),
+                                label: Text(_detecting
+                                    ? t('settingsDetecting')
+                                    : t('settingsDetect')),
+                              ),
+                            ),
+                          ),
+                          _discoveredPicker(),
+                          _field('SENTRY_ORG', t('settingsOrg')),
+                          _field('SENTRY_PROJECT', t('settingsProject')),
                           _field('SENTRY_BASE_URL', t('settingsSentryBase')),
                           _field('STATS_PERIOD_DAYS', t('settingsPeriod')),
                         ]),
+                        ExpansionTile(
+                          tilePadding: EdgeInsets.zero,
+                          title: Text(t('settingsAdvanced'),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                          childrenPadding: EdgeInsets.zero,
+                          expandedCrossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
                         _section(t('settingsAi'), [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -1431,6 +1580,12 @@ class _SettingsPageState extends State<SettingsPage> {
                           _field('AI_MAX_ISSUES', t('settingsMaxIssues')),
                         ]),
                         _section(t('settingsGithub'), [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(t('settingsGithubHint'),
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
+                          ),
                           _field('GITHUB_REPO', t('settingsRepo')),
                           _field('GITHUB_TOKEN', t('settingsGhToken'),
                               secret: true),
@@ -1438,6 +1593,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           _field('GIT_REMOTE', t('settingsGitRemote')),
                           _field('APP_REPO_PATH', t('settingsAppRepo')),
                         ]),
+                          ],
+                        ),
                       ],
                     ),
                   ),

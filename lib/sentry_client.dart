@@ -87,6 +87,45 @@ class SentryClient {
 
   Map<String, String> get _headers => {'Authorization': 'Bearer $token'};
 
+  /// Discover the organizations and projects a token can access — lets the
+  /// Settings page offer pickers instead of asking users to type slugs.
+  static Future<List<Map<String, Object?>>> discover({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final client = http.Client();
+    final headers = {'Authorization': 'Bearer $token'};
+    try {
+      final orgResp = await client
+          .get(Uri.parse('$baseUrl/api/0/organizations/'), headers: headers)
+          .timeout(_timeout);
+      if (orgResp.statusCode != 200) {
+        throw Exception(
+            'Sentry replied ${orgResp.statusCode} — check the token/scopes');
+      }
+      final orgs = (jsonDecode(orgResp.body) as List<dynamic>)
+          .map((o) => (o as Map<String, dynamic>)['slug'].toString())
+          .toList();
+      final out = <Map<String, Object?>>[];
+      for (final slug in orgs.take(10)) {
+        var projects = <String>[];
+        final pResp = await client
+            .get(Uri.parse('$baseUrl/api/0/organizations/$slug/projects/'),
+                headers: headers)
+            .timeout(_timeout);
+        if (pResp.statusCode == 200) {
+          projects = (jsonDecode(pResp.body) as List<dynamic>)
+              .map((p) => (p as Map<String, dynamic>)['slug'].toString())
+              .toList();
+        }
+        out.add({'org': slug, 'projects': projects});
+      }
+      return out;
+    } finally {
+      client.close();
+    }
+  }
+
   /// List issues (auto-pagination).
   Future<List<SentryIssue>> listIssues({
     String query = 'is:unresolved',
