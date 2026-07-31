@@ -1,0 +1,82 @@
+{
+  "_comment": "Default triage rules seeded into the DB on first run (existing rules are never overwritten). match_type: title | culprit | any. Add your own app-specific rules here or directly in the triage_rules table.",
+  "rules": [
+    {
+      "match_type": "title",
+      "pattern": "DeadSystemException",
+      "set_category": "device_layer",
+      "set_state": "known_noise",
+      "note": "Android system_server died — not fixable from the app"
+    },
+    {
+      "match_type": "title",
+      "pattern": "DeadSystemRuntimeException",
+      "set_category": "device_layer",
+      "set_state": "known_noise",
+      "note": "Android system_server died — not fixable from the app"
+    },
+    {
+      "match_type": "any",
+      "pattern": "libGLES_mali",
+      "set_category": "device_layer",
+      "set_state": "known_noise",
+      "note": "Mali GPU driver crash (native stack)"
+    },
+    {
+      "match_type": "any",
+      "pattern": "MarkCompact",
+      "set_category": "device_layer",
+      "set_state": "known_noise",
+      "note": "ART garbage collector crash (firmware-level)"
+    },
+    {
+      "match_type": "any",
+      "pattern": "acquireLatestImage",
+      "set_category": "device_layer",
+      "set_state": "known_noise",
+      "note": "PlatformView / ImageReader ANR (device-level)"
+    },
+    {
+      "match_type": "any",
+      "pattern": "SocketException",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "Connection/DNS failure — transient network, not an app bug"
+    },
+    {
+      "match_type": "any",
+      "pattern": "UnknownHostException",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "DNS resolution failure — transient network"
+    },
+    {
+      "match_type": "any",
+      "pattern": "SocketTimeoutException",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "Connect timeout — transient network"
+    },
+    {
+      "match_type": "any",
+      "pattern": "HandshakeException",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "TLS handshake failure (transient / captive portal)"
+    },
+    {
+      "match_type": "any",
+      "pattern": "Connection closed",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "Connection dropped mid-request"
+    },
+    {
+      "match_type": "any",
+      "pattern": "WebSocket",
+      "set_category": "network_noise",
+      "set_state": "known_noise",
+      "note": "WebSocket disconnect — transient network"
+    }
+  ]
+}

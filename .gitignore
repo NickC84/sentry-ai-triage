@@ -1,0 +1,9 @@
+.env
+data/
+*.db
+.dart_tool/
+build/
+ui/.dart_tool/
+ui/build/
+.DS_Store
+*.iml
