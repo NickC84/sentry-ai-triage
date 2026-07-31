@@ -45,16 +45,26 @@ Requirements: [Dart SDK](https://dart.dev/get-dart) ≥ 3.5,
 API key. `gh` CLI optional, for GitHub ticketing.
 
 ```bash
-git clone https://github.com/<you>/sentry-ai-triage
+git clone https://github.com/NickC84/sentry-ai-triage
 cd sentry-ai-triage
-dart pub get
-
-# Build the web UI once (rebuild only when the UI changes)
-cd ui && flutter pub get && flutter build web --no-web-resources-cdn && cd ..
-
-# Run — boots with zero config and opens the UI
-dart run bin/serve.dart
+./start.sh        # macOS / Linux — or double-click start.command in Finder
+start.bat         # Windows
 ```
+
+That's it — the first run builds the web UI (takes a minute), then the
+server starts and your browser opens automatically. macOS users can also
+double-click `start.command` in Finder.
+
+<details>
+<summary>Manual steps (what the launcher does)</summary>
+
+```bash
+dart pub get
+cd ui && flutter pub get && flutter build web --no-web-resources-cdn && cd ..
+dart run bin/serve.dart   # PORT=9000 to change port, NO_OPEN=1 to keep the browser closed
+```
+
+</details>
 
 Open Settings in the UI, fill in your Sentry org / project / auth token
 (read-only scopes: `project:read` + `event:read`, from Sentry → Settings →
