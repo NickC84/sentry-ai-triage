@@ -133,6 +133,15 @@ class _TriagePageState extends State<TriagePage> {
   void initState() {
     super.initState();
     _load();
+    _syncOutputLanguage();
+  }
+
+  /// Keep the backend's AI output language (analysis, ticket bodies, PR
+  /// text) in lockstep with the UI language — no separate setting to forget.
+  void _syncOutputLanguage() {
+    _api
+        .saveConfig({'OUTPUT_LANGUAGE': I18n.isZh ? 'zh-Hant' : 'en'})
+        .catchError((_) {}); // backend may be down; the UI still works
   }
 
   int get _bugCount => _issues.where((i) => !i.isFeature).length;
@@ -399,7 +408,10 @@ class _TriagePageState extends State<TriagePage> {
             icon: const Icon(Icons.settings_outlined),
           ),
           TextButton(
-            onPressed: I18n.toggle,
+            onPressed: () {
+              I18n.toggle();
+              _syncOutputLanguage();
+            },
             child: Text(I18n.isZh ? 'EN' : '中'),
           ),
           const SizedBox(width: 8),
@@ -1242,6 +1254,53 @@ class _IssueDetailState extends State<IssueDetail> {
       );
 }
 
+// ── Help / user guide page ────────────────────────────────────────
+/// Explains what every feature and button does, in the UI language.
+class HelpPage extends StatelessWidget {
+  const HelpPage({super.key});
+
+  static const _sections = [
+    ['helpFlowTitle', 'helpFlowBody'],
+    ['helpIngestTitle', 'helpIngestBody'],
+    ['helpNoiseTitle', 'helpNoiseBody'],
+    ['helpAnalyzeTitle', 'helpAnalyzeBody'],
+    ['helpFeatureTitle', 'helpFeatureBody'],
+    ['helpTicketTitle', 'helpTicketBody'],
+    ['helpPrTitle', 'helpPrBody'],
+    ['helpSyncTitle', 'helpSyncBody'],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(t('helpTitle'))),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(24),
+            itemCount: _sections.length,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t(_sections[i][0]),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 6),
+                  Text(t(_sections[i][1]),
+                      style: const TextStyle(fontSize: 13, height: 1.5)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Settings page ─────────────────────────────────────────────────
 /// Edits everything in [Config.editableKeys] via /api/config. Secrets come
 /// back masked; leaving them masked keeps the stored value.
@@ -1255,7 +1314,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _ctls = <String, TextEditingController>{};
   String _aiMode = 'claude_cli';
-  String _outputLang = 'en';
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -1301,7 +1359,6 @@ class _SettingsPageState extends State<SettingsPage> {
         _ctls[k] = TextEditingController(text: (cfg[k] ?? '').toString());
       }
       _aiMode = (cfg['AI_MODE'] ?? 'claude_cli').toString();
-      _outputLang = (cfg['OUTPUT_LANGUAGE'] ?? 'en').toString();
       setState(() => _loading = false);
     } catch (e) {
       setState(() {
@@ -1327,7 +1384,6 @@ class _SettingsPageState extends State<SettingsPage> {
       final values = <String, String>{
         for (final k in _textKeys) k: _ctls[k]!.text.trim(),
         'AI_MODE': _aiMode,
-        'OUTPUT_LANGUAGE': _outputLang,
       };
       await widget.api.saveConfig(values);
       if (mounted) {
@@ -1490,6 +1546,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
+                        Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: const Icon(Icons.menu_book_outlined),
+                            title: Text(t('settingsHelp')),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const HelpPage())),
+                          ),
+                        ),
                         _section(t('settingsSentry'), [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
@@ -1580,25 +1647,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           _field('APP_CONTEXT', t('settingsAppContext'),
                               maxLines: 4,
                               hint: t('settingsAppContextHint')),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: DropdownButtonFormField<String>(
-                              value: _outputLang,
-                              decoration: InputDecoration(
-                                labelText: t('settingsOutputLang'),
-                                border: const OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'en', child: Text('English')),
-                                DropdownMenuItem(
-                                    value: 'zh-Hant', child: Text('繁體中文')),
-                              ],
-                              onChanged: (v) =>
-                                  setState(() => _outputLang = v ?? 'en'),
-                            ),
-                          ),
                           _field('AI_MIN_EVENTS', t('settingsMinEvents')),
                           _field('AI_MAX_ISSUES', t('settingsMaxIssues')),
                         ]),

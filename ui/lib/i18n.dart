@@ -220,7 +220,52 @@ class I18n {
       'e.g. "Flutter kiosk app on low-end Android TV boxes; video playback is core; device/network crashes are usually not fixable."',
       '例：「跑在低階 Android TV 盒上的 Flutter 看板 App；影片播放是核心功能；裝置/網路類崩潰通常不可修。」'
     ],
-    'settingsOutputLang': ['AI output language', 'AI 輸出語言'],
+    // help / user guide
+    'settingsHelp': [
+      'User guide — what every button does',
+      '使用說明——每個按鈕在做什麼'
+    ],
+    'helpTitle': ['User guide', '使用說明'],
+    'helpFlowTitle': ['The big picture', '整體流程'],
+    'helpFlowBody': [
+      'Sentry ingest → rules filter noise for free → AI analyzes what\'s left → you open GitHub tickets to discuss/implement → you review and merge. Nothing outward-facing ever happens without you pressing a button.',
+      '從 Sentry 拉取 → 規則先免費濾掉噪音 → 剩下的交給 AI 分析 → 你開 GitHub 票討論/實作 → 你 review 後 merge。所有對外動作都要你按按鈕才會發生。'
+    ],
+    'helpIngestTitle': ['Sync from Sentry', '從 Sentry 拉取'],
+    'helpIngestBody': [
+      'Read-only fetch of your Sentry issues into a local SQLite DB. Every run also stores a snapshot, so trends survive Sentry\'s ~90-day retention. Triage rules run automatically right after each fetch.',
+      '用唯讀權限把 Sentry issues 抓進本地 SQLite。每次拉取都會存一份快照，長期趨勢不受 Sentry 約 90 天保留期限制。拉完會自動套用分流規則。'
+    ],
+    'helpNoiseTitle': ['Noise filtering & triage', '噪音過濾與人工分流'],
+    'helpNoiseBody': [
+      'Built-in rules mark known device-layer / network noise as "known noise" — zero AI cost. The "Show noise" switch reveals them. You can reclassify any issue with the category/state dropdowns; manual decisions are never overwritten by rules.',
+      '內建規則會把已知的裝置層/網路噪音自動標成「已知噪音」——不花任何 AI 成本。「顯示噪音」開關可以看到被濾掉的。每筆 issue 都能用分類/狀態下拉手動改，人工決定不會被規則覆蓋。'
+    ],
+    'helpAnalyzeTitle': ['AI analysis', 'AI 分析'],
+    'helpAnalyzeBody': [
+      'Judges severity (0–100), whether it\'s app-fixable, root cause and recommended action. Runs on your Claude Code subscription by default (or the Anthropic API). Cost guardrails: unchanged issues are cached and never re-billed. Output language follows the UI language (top-right toggle).',
+      '判斷嚴重度（0–100）、App 端可不可修、根因與建議處置。預設走你的 Claude Code 訂閱（也可改 Anthropic API）。成本護欄：內容沒變的 issue 走快取、不重複計費。輸出語言跟著右上角的介面語言。'
+    ],
+    'helpFeatureTitle': ['Features tab', '需求分頁'],
+    'helpFeatureBody': [
+      'A lightweight backlog for feature ideas. "Assess feasibility" lets the AI read your actual app repo (set the repo path in Advanced settings) and judge feasibility, effort, affected areas, and risks.',
+      '輕量的需求待辦清單。「分析可行性」會讓 AI 讀你真實的 App repo（在進階設定填 repo 路徑），評估可行性、工作量、影響範圍與風險。'
+    ],
+    'helpTicketTitle': ['Ticket + discuss', '開票 + 討論'],
+    'helpTicketBody': [
+      'Opens a GitHub issue carrying the AI analysis, and auto-@claude\'s it to start a discussion (needs the GitHub repo set in Advanced settings, plus a logged-in gh CLI or a token). Analyze first — unanalyzed items can\'t be ticketed.',
+      '把 AI 分析結果帶進一張 GitHub issue，並自動 @claude 開啟討論（要在進階設定填目標 repo，並已登入 gh CLI 或填 token）。要先分析過才能開票，避免開出空票。'
+    ],
+    'helpPrTitle': ['Draft PR', '產草稿 PR'],
+    'helpPrBody': [
+      'For items selected for dev, the AI edits code on an isolated branch and opens a draft PR. It is never merged automatically — you review, test, and merge.',
+      '對已勾選要開發的項目，AI 會在隔離分支上改 code 並開 draft PR。永遠不會自動 merge——review、測試、按 merge 都是你。'
+    ],
+    'helpSyncTitle': ['Sync states', '同步狀態'],
+    'helpSyncBody': [
+      'Asks GitHub for the current state of every ticket/PR this tool created (open / closed / merged / deleted) and updates the local list — use it when you\'ve closed or merged things over on GitHub.',
+      '去 GitHub 查這個工具開過的每張票/PR 現在的狀態（開著/已關/已合併/已刪除），更新回本地清單——在 GitHub 那邊關票或 merge 之後按這顆同步回來。'
+    ],
     'settingsMinEvents': ['Min events before AI (cost guardrail)', '送 AI 的最低事件數（成本護欄）'],
     'settingsMaxIssues': ['Max issues per batch (cost guardrail)', '單次批次上限（成本護欄）'],
     'settingsGithub': ['GitHub', 'GitHub'],
