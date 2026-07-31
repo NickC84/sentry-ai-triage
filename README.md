@@ -100,3 +100,7 @@ rules/     default triage rules seeded on first run
 ui/        Flutter Web frontend (en / zh-Hant)
 docs/      original design spec (zh-Hant, historical)
 ```
+
+## License
+
+[MIT](LICENSE)
