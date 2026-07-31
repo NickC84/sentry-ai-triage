@@ -246,7 +246,8 @@ class I18n {
       'Token works, but no organizations were found',
       'token 有效，但找不到任何組織'
     ],
-    'settingsDetectPick': ['Tap to fill in:', '點一下自動填入：'],
+    'settingsDetectPick': ['Tap one to fill in & save:', '點一下自動填入並儲存：'],
+    'settingsAutoFilled': ['Filled in & saved: {p}', '已自動填入並儲存：{p}'],
     'settingsAdvanced': [
       'Advanced — the defaults work out of the box',
       '進階設定——預設值可直接使用'

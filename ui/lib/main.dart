@@ -1311,7 +1311,17 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _save() async {
+  /// Fill the slug fields from discovery and persist right away — no extra
+  /// "save" step for the common path.
+  Future<void> _fillAndSave(String org, String project) async {
+    setState(() {
+      _ctls['SENTRY_ORG']!.text = org;
+      _ctls['SENTRY_PROJECT']!.text = project;
+    });
+    await _save(successMsg: tp('settingsAutoFilled', {'p': '$org / $project'}));
+  }
+
+  Future<void> _save({String? successMsg}) async {
     setState(() => _saving = true);
     try {
       final values = <String, String>{
@@ -1321,8 +1331,8 @@ class _SettingsPageState extends State<SettingsPage> {
       };
       await widget.api.saveConfig(values);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(t('settingsSaved'))));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(successMsg ?? t('settingsSaved'))));
       }
     } catch (e) {
       if (mounted) {
@@ -1353,7 +1363,17 @@ class _SettingsPageState extends State<SettingsPage> {
         sentryBaseUrl: _ctls['SENTRY_BASE_URL']!.text.trim(),
       );
       setState(() => _discovered = orgs);
-      if (orgs.isEmpty && mounted) {
+      // Exactly one org/project pair → no choice to make, fill & save it.
+      final pairs = <List<String>>[
+        for (final o in orgs)
+          for (final p
+              in ((o as Map<String, dynamic>)['projects'] as List<dynamic>? ??
+                  []))
+            [o['org'].toString(), p.toString()]
+      ];
+      if (pairs.length == 1) {
+        await _fillAndSave(pairs.first[0], pairs.first[1]);
+      } else if (orgs.isEmpty && mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(t('settingsDetectEmpty'))));
       }
@@ -1386,10 +1406,7 @@ class _SettingsPageState extends State<SettingsPage> {
         chips.add(OutlinedButton.icon(
           icon: const Icon(Icons.bolt, size: 16),
           label: Text('$org / $p'),
-          onPressed: () => setState(() {
-            _ctls['SENTRY_ORG']!.text = org;
-            _ctls['SENTRY_PROJECT']!.text = p.toString();
-          }),
+          onPressed: () => _fillAndSave(org, p.toString()),
         ));
       }
     }
