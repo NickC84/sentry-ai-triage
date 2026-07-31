@@ -27,14 +27,26 @@ bin/analyze.dart       batch AI analysis (thresholds / cache / cost guardrails)
 bin/feature.dart       feature feasibility CLI (Claude reads the app repo)
 lib/config.dart        config: env > .env > data/config.json (Settings UI)
 lib/sentry_client.dart read-only Sentry REST client (issues + release tags)
-lib/db.dart            SQLite: schema, upserts, rules, queries, ai_analysis
-lib/api_server.dart    shelf API + CORS + serves the built web UI
-lib/ai_analyzer.dart   structured analysis via claude CLI or Anthropic API
+lib/db.dart            SQLite core (schema/migrations); queries live in
+lib/db/                  ingest_store / issue_queries / analysis_store /
+                         github_store (part files, grouped by domain)
+lib/api_server.dart    server core (engines/router/static hosting); routes in
+lib/api/                 config_routes / issue_routes / github_routes
+lib/ai_analyzer.dart   AI orchestration; split into
+lib/ai/                  models / prompts / engines (CLI + Anthropic API)
 lib/github.dart        tickets via gh CLI (or GITHUB_TOKEN)
 lib/pr_maker.dart      worktree branch → claude edits → push → draft PR
 rules/                 default triage rules seeded on first run
-ui/                    Flutter Web frontend (lib/{main,api,models,i18n}.dart)
+ui/lib/                Flutter Web frontend, one file per screen:
+                         main (app shell) / triage_page / issue_detail /
+                         settings_page / help_page, shared pieces in
+                         ui_helpers / issue_tile / issue_list_pane /
+                         detail_widgets / page_chrome / dialogs, strings in
+                         i18n.dart, API client in api.dart, models.dart
 ```
+
+Keep classes under ~300 lines — extract widgets / extensions instead of
+letting page states and stores grow.
 
 DB tables: `issues` (unified backlog: source = sentry | feature),
 `issue_release_stats`, `issue_snapshots` (long-term trends),

@@ -66,9 +66,14 @@ dart run bin/serve.dart   # PORT=9000 to change port, NO_OPEN=1 to keep the brow
 
 </details>
 
-Open Settings in the UI, fill in your Sentry org / project / auth token
-(read-only scopes: `project:read` + `event:read`, from Sentry → Settings →
-Auth Tokens), then hit **Sync from Sentry**. Everything else is optional.
+Open Settings in the UI, paste a read-only Sentry token (the Settings page
+links to the right page and can auto-fill your org/project from the token),
+then hit **Sync from Sentry**. Everything else is optional.
+
+Works on macOS, Linux, and Windows. The only native dependency is SQLite:
+macOS ships it, most Linux distros have it (`apt install libsqlite3-0` if
+not), and on Windows drop [sqlite3.dll](https://www.sqlite.org/download.html)
+somewhere on your `PATH` (or next to the executable).
 
 Prefer files? `cp .env.example .env` and edit — env vars > `.env` >
 in-app settings.
