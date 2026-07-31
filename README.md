@@ -39,21 +39,46 @@ common for mobile / IoT / kiosk apps.
 
 ## Quick start
 
-Requirements: [Dart SDK](https://dart.dev/get-dart) ≥ 3.5,
-[Flutter](https://flutter.dev) (to build the web UI once), and either the
-[Claude Code CLI](https://claude.com/claude-code) (logged in) or an Anthropic
-API key. `gh` CLI optional, for GitHub ticketing.
+### 1 · Install the prerequisites (once)
+
+| Tool | Needed for | Notes |
+|---|---|---|
+| [Dart SDK](https://dart.dev/get-dart) ≥ 3.5 | running the backend | required |
+| [Flutter](https://flutter.dev/docs/get-started/install) | building the web UI (first run only) | required |
+| [Claude Code CLI](https://claude.com/claude-code), logged in | AI analysis on your subscription | or use an Anthropic API key instead (Settings → Advanced) |
+| [`gh` CLI](https://cli.github.com), logged in | GitHub ticketing / draft PRs | optional — skip if you don't use the GitHub features |
+
+Works on macOS, Linux, and Windows. The only native dependency is SQLite:
+macOS ships it, most Linux distros have it (`apt install libsqlite3-0` if
+not), and on Windows drop [sqlite3.dll](https://www.sqlite.org/download.html)
+somewhere on your `PATH` (or next to the executable).
+
+### 2 · Clone and launch
 
 ```bash
 git clone https://github.com/NickC84/sentry-ai-triage
-cd sentry-ai-triage
-./start.sh        # macOS / Linux — or double-click start.command in Finder
-start.bat         # Windows
 ```
 
-That's it — the first run builds the web UI (takes a minute), then the
-server starts and your browser opens automatically. macOS users can also
-double-click `start.command` in Finder.
+Then launch — no config files to edit:
+
+- **macOS**: double-click **`start.command`** in Finder (or run `./start.sh`)
+- **Linux**: `./start.sh`
+- **Windows**: double-click **`start.bat`**
+
+The first run builds the web UI (takes a minute); after that it starts
+instantly. The server boots with zero configuration and opens your browser
+at `http://localhost:8787`.
+
+### 3 · Connect your Sentry (in the browser)
+
+Open **Settings** (gear icon): paste a read-only Sentry token — the page
+links straight to Sentry's token screen and tells you which two scopes to
+tick — then hit **auto-detect** to fill in your org/project. Back on the
+main screen, hit **Sync from Sentry**. Everything else is optional.
+
+For what every button does (noise rules, AI analysis, ticketing, sync…),
+open **Settings → User guide** — the full manual is built into the app, in
+English and 繁體中文.
 
 <details>
 <summary>Manual steps (what the launcher does)</summary>
@@ -65,15 +90,6 @@ dart run bin/serve.dart   # PORT=9000 to change port, NO_OPEN=1 to keep the brow
 ```
 
 </details>
-
-Open Settings in the UI, paste a read-only Sentry token (the Settings page
-links to the right page and can auto-fill your org/project from the token),
-then hit **Sync from Sentry**. Everything else is optional.
-
-Works on macOS, Linux, and Windows. The only native dependency is SQLite:
-macOS ships it, most Linux distros have it (`apt install libsqlite3-0` if
-not), and on Windows drop [sqlite3.dll](https://www.sqlite.org/download.html)
-somewhere on your `PATH` (or next to the executable).
 
 Prefer files? `cp .env.example .env` and edit — env vars > `.env` >
 in-app settings.
