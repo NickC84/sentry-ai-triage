@@ -15,6 +15,8 @@ Built for teams whose Sentry feed is dominated by unfixable noise (device
 firmware crashes, flaky networks) with real app bugs buried in between —
 common for mobile / IoT / kiosk apps.
 
+![Triage list — noise filtered, AI severity badges, per-release trends](docs/screenshots/triage-main.png)
+
 ## What it does
 
 - **Ingest** issues from Sentry (REST API, auto-pagination) into a local
@@ -81,6 +83,8 @@ main screen, hit **Sync from Sentry**. Everything else is optional.
 For what every button does (noise rules, AI analysis, ticketing, sync…),
 open **Settings → User guide** — the full manual is built into the app, in
 English and 繁體中文.
+
+![Settings — token link, auto-detect, advanced collapsed](docs/screenshots/settings.png)
 
 <details>
 <summary>Manual steps (what the launcher does)</summary>
@@ -154,6 +158,8 @@ Sentry 拉取 → 規則過濾噪音 → 長期趨勢
 
 為這種團隊而生：Sentry 裡塞滿修不了的噪音（裝置韌體崩潰、網路不穩），真正的 App bug 被埋在裡面——行動裝置／IoT／看板類 App 尤其常見。
 
+![分流清單——噪音已濾除、AI 嚴重度徽章、每版趨勢](docs/screenshots/triage-main.png)
+
 ## 功能
 
 - **拉取**：透過 Sentry REST API（自動翻頁）把 issues 抓進本地 SQLite，每次拉取都存快照，長期趨勢不受 Sentry 保留期限制。
@@ -195,6 +201,8 @@ git clone https://github.com/NickC84/sentry-ai-triage
 打開**設定**（齒輪圖示）：貼上唯讀的 Sentry token——設定頁有直達 Sentry token 頁面的連結，也寫明要勾哪兩個權限——然後按**自動偵測**填入 org／project。回主畫面按**從 Sentry 拉取**，完成。其他都是選用。
 
 每個按鈕在做什麼（噪音規則、AI 分析、開票、同步…），打開**設定 → 使用說明**——完整操作手冊就內建在 app 裡，中英雙語。
+
+![設定頁——token 直達連結、自動偵測、進階收合](docs/screenshots/settings.png)
 
 ## 無介面 CLI
 
