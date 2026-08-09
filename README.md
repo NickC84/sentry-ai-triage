@@ -222,7 +222,7 @@ zips plus `SHA256SUMS.txt` to the GitHub release. Toolchain versions are
 pinned in `.github/workflows/release.yml`.
 
 The GHCR package published from a public repo is publicly pullable as-is —
-verified by pulling `v0.2.1` anonymously. GHCR exposes no API for package
+verified by pulling it anonymously. GHCR exposes no API for package
 visibility, so if one ever does land private, it is a manual flip at
 `https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`.
 
@@ -382,7 +382,7 @@ git tag v0.2.0 && git push --tags
 
 CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux（x64／arm64）／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，推送 container image 到 GHCR，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
 
-公開 repo 推上 GHCR 的 package 本身就是公開可 pull 的——已用匿名 pull `v0.2.1` 驗證過。GHCR 沒有改 visibility 的 API，萬一哪天真的變成 private，只能手動到
+公開 repo 推上 GHCR 的 package 本身就是公開可 pull 的——已用匿名 pull 驗證過。GHCR 沒有改 visibility 的 API，萬一哪天真的變成 private，只能手動到
 `https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings` 切換。
 
 ## 授權
