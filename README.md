@@ -2,44 +2,54 @@
 
 **English** · [繁體中文](#zh-hant)
 
-Self-hosted Sentry issue triage with AI analysis — powered by the Claude
-subscription you already pay for, instead of a separate AI add-on.
+A small self-hosted companion to Sentry. It keeps a local copy of your
+issues, sorts the device and network noise out of the way, and sends what is
+left to Claude for a severity and root-cause read. The analysis runs through
+the Claude Code CLI, on a subscription you already have.
 
 ```
-Sentry ingest → rule-based noise filtering → long-term trends
-             → AI severity / root-cause analysis (cost-guarded)
-             → GitHub tickets (@claude discussion) → AI draft PRs → human review
+Sentry sync → noise rules → long-term trends
+           → AI severity / root-cause read (cost-guarded)
+           → GitHub tickets (@claude discussion) → AI draft PRs → human review
 ```
 
-Built for teams whose Sentry feed is dominated by unfixable noise (device
-firmware crashes, flaky networks) with real app bugs buried in between —
-common for mobile / IoT / kiosk apps.
+It is aimed at projects that collect a lot of crashes nobody can fix from
+the app side — firmware faults, flaky radios, kiosk hardware — where the
+bugs that do matter are mixed in among them. Sentry stays where it is: it
+still collects, groups and alerts, and it stays the authority on whether an
+issue is open. Resolving or archiving something there closes it here on the
+next sync.
 
 ![Triage list — noise filtered, AI severity badges, per-release trends](docs/screenshots/triage-main.png)
 
 ## What it does
 
-- **Ingest** issues from Sentry (REST API, auto-pagination) into a local
-  SQLite DB, snapshotting every run so trends survive Sentry's retention
-  window.
-- **Auto-triage rules** mark known device-layer / network noise
-  (`DeadSystemException`, `libGLES_mali`, GC/firmware crashes, timeouts…) as
-  `known_noise` before any AI runs — zero cost, zero misclassified app bugs.
-  Rules are seeded from `rules/default_rules.json` and editable in the DB.
-- **AI analysis** of what's left: severity (0–100), app-fixable or not, root
-  cause, recommended action, confidence. Runs through the **Claude Code CLI**
-  (uses your subscription, no API cost) or the **Anthropic API** — your
-  choice.
-- **Web UI** (Flutter Web, English / 繁體中文): triage list with per-release
-  frequency bars, manual re-classification, feature backlog with AI
-  feasibility analysis (it reads your actual repo), and in-app Settings — no
-  config files needed.
-- **GitHub integration**: one click opens a ticket with the analysis and
-  auto-@claude's it to start a discussion; a second click asks for an AI
-  draft PR (opened as draft, never merged without human review). Ticket/PR
-  states sync back.
-- **Cost guardrails**: minimum event count before AI, per-batch cap, content
-  hashing so unchanged issues are never re-analyzed, noise never sent.
+Syncs your issues into a local SQLite database and takes a snapshot each
+run, so you can still see how something has trended over a year even after
+it has aged out of Sentry.
+
+Marks known device and network noise (`DeadSystemException`, `libGLES_mali`,
+GC and firmware crashes, timeouts) as `known_noise` before any AI runs.
+Noise is never sent for analysis, which is what keeps the cost down. The
+starting rules are in `rules/default_rules.json` and you can edit them.
+
+Reads whatever is left: severity 0–100, whether it looks fixable from the
+app, likely root cause, a recommended action and a confidence score. Runs
+either through the Claude Code CLI on your subscription, or against the
+Anthropic API with a key.
+
+Comes with a web UI in English and 繁體中文: the triage list with
+per-release frequency bars, manual re-classification, a feature backlog
+where the AI reads your actual repo to judge feasibility, and settings you
+fill in from the browser.
+
+Opens GitHub tickets with the analysis attached and @claude's them to start
+a discussion. A second click asks for a draft PR, which stays a draft until
+a human merges it. Ticket and PR states are synced back.
+
+Keeps a few guardrails on spending: a minimum event count before anything is
+analyzed, a cap per batch, and content hashing so an unchanged issue is
+never analyzed twice.
 
 ## Quick start
 
@@ -179,15 +189,16 @@ From source, the same three are `dart run bin/ingest.dart`,
 
 ## How the AI engine works
 
-`AI_MODE=claude_cli` (default) shells out to `claude -p` with a JSON schema —
-so analysis runs on your existing Claude subscription. `AI_MODE=anthropic_api`
-calls the API directly with `ANTHROPIC_API_KEY`. `CLI_COMMAND` can point at
+`AI_MODE=claude_cli` (the default) calls `claude -p` with a JSON schema, so
+the analysis runs on your Claude subscription. `AI_MODE=anthropic_api` calls
+the API directly with `ANTHROPIC_API_KEY` instead. `CLI_COMMAND` can point at
 any compatible agentic CLI wrapper.
 
-Set `APP_CONTEXT` (in Settings) to describe your app — platform, what "core
-feature" means, known noise sources — and the analysis gets noticeably
-sharper. `OUTPUT_LANGUAGE` switches AI output and ticket bodies between
-English and Traditional Chinese.
+It is worth filling in `APP_CONTEXT` in Settings: describe the platform, what
+counts as a core feature, and the noise sources you already know about. The
+analysis gets noticeably sharper with that context than without it.
+`OUTPUT_LANGUAGE` switches AI output and ticket bodies between English and
+Traditional Chinese.
 
 ## Data & privacy
 
@@ -238,26 +249,31 @@ visibility, so if one ever does land private, it is a manual flip at
 
 [English](#sentry-ai-triage) · **繁體中文**
 
-自架的 Sentry issue 分流工具，內建 AI 分析——用你**已經在付費的 Claude 訂閱**驅動，不用另外加購 AI 服務。
+一個自架的 Sentry 小夥伴。它在本地保留一份 issue 副本，把裝置與網路類的噪音先分出去，剩下的交給 Claude 判斷嚴重度與根因。分析走 Claude Code CLI，用你手上已經有的訂閱。
 
 ```
-Sentry 拉取 → 規則過濾噪音 → 長期趨勢
-           → AI 嚴重度／根因分析（有成本護欄）
-           → GitHub 開票（@claude 討論）→ AI 草稿 PR → 人工 review
+從 Sentry 同步 → 噪音規則 → 長期趨勢
+             → AI 嚴重度／根因判讀（有成本護欄）
+             → GitHub 開票（@claude 討論）→ AI 草稿 PR → 人工 review
 ```
 
-為這種團隊而生：Sentry 裡塞滿修不了的噪音（裝置韌體崩潰、網路不穩），真正的 App bug 被埋在裡面——行動裝置／IoT／看板類 App 尤其常見。
+適合這樣的專案：Sentry 裡累積了大量從 App 端根本修不了的崩潰（韌體問題、訊號不穩、看板機硬體），而真正該處理的 bug 混在裡面。Sentry 該做的事還是它在做：收集、分組、告警，而且一個 issue 到底結案了沒，也還是以 Sentry 為準——在那邊 resolve 或封存，下次同步時這裡就會跟著關掉。
 
 ![分流清單——噪音已濾除、AI 嚴重度徽章、每版趨勢](docs/screenshots/triage-main.png)
 
 ## 功能
 
-- **拉取**：透過 Sentry REST API（自動翻頁）把 issues 抓進本地 SQLite，每次拉取都存快照，長期趨勢不受 Sentry 保留期限制。
-- **自動分流規則**：已知的裝置層／網路噪音（`DeadSystemException`、`libGLES_mali`、GC／韌體崩潰、逾時…）在 AI 介入前就標成「已知噪音」——零成本、不誤殺 App bug。預設規則在 `rules/default_rules.json`，可自行增修。
-- **AI 分析**：對剩下的 issue 判斷嚴重度（0–100）、App 端可不可修、根因、建議處置與信心值。預設走 **Claude Code CLI**（吃訂閱、零 API 費），也可改用 **Anthropic API**。
-- **Web UI**（Flutter Web，中英雙語）：分流清單附每版頻率長條圖、手動重新分類、需求待辦附 AI 可行性分析（會讀你真實的 repo）、站內設定頁——完全不用碰設定檔。
-- **GitHub 整合**：一鍵開票（附上分析內容）並自動 @claude 開啟討論；再一鍵請 AI 產草稿 PR（永遠是 draft，人工 review 才 merge）。票／PR 狀態會同步回來。
-- **成本護欄**：低於門檻不送 AI、單批有上限、內容沒變走快取不重跑、噪音完全不送。
+把 issue 同步進本地 SQLite，每次同步存一份快照，所以就算某個問題早就超過 Sentry 的保留期，你還是看得到它一整年的走勢。
+
+在 AI 介入之前，先用規則把已知的裝置與網路噪音（`DeadSystemException`、`libGLES_mali`、GC 與韌體崩潰、逾時）標成「已知噪音」。噪音永遠不會送去分析，成本就是這樣壓下來的。起始規則放在 `rules/default_rules.json`，可以自己改。
+
+剩下的才判讀：嚴重度 0–100、看起來能不能從 App 端修、可能的根因、建議處置，以及信心值。可以走 Claude Code CLI 吃你的訂閱，也可以填 key 直接呼叫 Anthropic API。
+
+附一套中英雙語的 Web UI：分流清單帶每版頻率長條圖、可手動重新分類、需求待辦會讓 AI 讀你真實的 repo 來評估可行性，設定也在瀏覽器裡填。
+
+可以直接開 GitHub 票並附上分析內容，順手 @claude 起個討論；再點一次可以請 AI 產草稿 PR，它會一直是 draft，要人來 merge。票和 PR 的狀態會同步回來。
+
+花費上有幾道護欄：低於事件門檻不分析、單批有上限、內容沒變就不重跑。
 
 ## 快速開始
 

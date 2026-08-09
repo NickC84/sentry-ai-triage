@@ -126,6 +126,9 @@ class TriageDb {
     // Phase 3/4 two-way sync: GitHub ticket/PR state (open|closed|merged|deleted)
     _addColumn('ai_analysis', 'ticket_state', 'TEXT');
     _addColumn('ai_analysis', 'pr_state', 'TEXT');
+    // What Sentry currently thinks of the issue (unresolved|resolved|ignored),
+    // kept apart from our own triage_state so the two can be compared.
+    _addColumn('issues', 'sentry_status', "TEXT DEFAULT 'unresolved'");
   }
 
   /// ALTER TABLE to add the column if missing (idempotent migration).

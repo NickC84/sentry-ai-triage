@@ -165,6 +165,69 @@ class SentryClient {
     return issues;
   }
 
+  /// Issues Sentry itself considers closed, as `id -> resolved | ignored`.
+  ///
+  /// Needed because the main fetch only asks for unresolved issues: without
+  /// this, anything a teammate resolves in Sentry would sit in the local
+  /// backlog looking active forever. Absence from the unresolved feed is not
+  /// enough to conclude anything — a quiet issue is absent too — so the
+  /// closed set is asked for explicitly.
+  ///
+  /// [truncated] reports that the page cap was hit, i.e. some closed issues
+  /// were not seen this run.
+  Future<({Map<String, String> statuses, bool truncated})> closedIssues({
+    int statsPeriodDays = 90,
+    int maxPages = 10,
+  }) async {
+    final statuses = <String, String>{};
+    var truncated = false;
+    for (final status in const ['resolved', 'ignored']) {
+      final page = await _issueIds('is:$status',
+          statsPeriodDays: statsPeriodDays, maxPages: maxPages);
+      for (final id in page.ids) {
+        statuses[id] = status;
+      }
+      truncated = truncated || page.truncated;
+    }
+    return (statuses: statuses, truncated: truncated);
+  }
+
+  /// Paginated id-only fetch (the full issue bodies are not needed here).
+  Future<({List<String> ids, bool truncated})> _issueIds(
+    String query, {
+    required int statsPeriodDays,
+    required int maxPages,
+  }) async {
+    final ids = <String>[];
+    final now = DateTime.now().toUtc();
+    final start = now.subtract(Duration(days: statsPeriodDays));
+    String iso(DateTime d) => d.toIso8601String().split('.').first;
+
+    var url = Uri.parse('$baseUrl/api/0/projects/$org/$project/issues/')
+        .replace(queryParameters: {
+      'query': query,
+      'start': iso(start),
+      'end': iso(now),
+      'utc': 'true',
+      'limit': '100',
+    });
+
+    for (var page = 0; page < maxPages; page++) {
+      final resp = await _http.get(url, headers: _headers).timeout(_timeout);
+      if (resp.statusCode != 200) {
+        throw Exception('List issues ($query) failed ${resp.statusCode}: ${resp.body}');
+      }
+      for (final j in jsonDecode(resp.body) as List<dynamic>) {
+        final id = (j as Map<String, dynamic>)['id'];
+        if (id != null) ids.add(id.toString());
+      }
+      final next = _nextCursorUrl(resp.headers['link']);
+      if (next == null) return (ids: ids, truncated: false);
+      url = Uri.parse(next);
+    }
+    return (ids: ids, truncated: true);
+  }
+
   /// Per-release event counts for an issue (via tag values — the
   /// "per-release frequency").
   Future<List<ReleaseStat>> releaseStats(String issueId) async {

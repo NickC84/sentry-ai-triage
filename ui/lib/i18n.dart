@@ -41,6 +41,10 @@ class I18n {
     'syncFromSentry': ['Sync from Sentry', '從 Sentry 拉取'],
     'ingesting': ['Fetching…', '拉取中…'],
     'ingestDone': ['Fetched {n} issues from Sentry', '已從 Sentry 拉取 {n} 筆 issue'],
+    'ingestClosed': [
+      'Fetched {n} issues · {c} closed in Sentry',
+      '已從 Sentry 拉取 {n} 筆 issue，其中 {c} 筆在 Sentry 已處理'
+    ],
     'ingestFail': ['Ingest failed: {e}', '拉取失敗：{e}'],
     'showNoise': ['Show noise', '顯示噪音'],
     'refresh': ['Refresh', '重新整理'],

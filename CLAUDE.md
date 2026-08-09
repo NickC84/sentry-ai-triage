@@ -67,6 +67,13 @@ DB tables: `issues` (unified backlog: source = sentry | feature),
 
 triage_state: `new` / `keep` / `hidden` / `known_noise` / `resolved`.
 
+`issues.sentry_status` (`unresolved|resolved|ignored`) records what Sentry
+thinks, kept separate from our `triage_state`. Each ingest reconciles them:
+Sentry closing an issue closes it here (unless a human set `hidden` /
+`known_noise` / resolved it manually), and a regression reopens it. Sentry is
+the authority on *open vs closed*; this side owns the triage opinion. The
+Sentry client stays read-only — nothing is ever written back.
+
 ## Hard rules (do not violate)
 
 1. **Don't rebuild what Sentry does well** — crash collection, grouping,

@@ -30,6 +30,10 @@ Future<void> main(List<String> args) async {
     s.stateCounts.forEach((k, v) => stdout.writeln('  $k: $v'));
     stdout.writeln('  (rules auto-classified this run: ${s.rulesApplied})');
     stdout.writeln('  (release stats written: ${s.releaseStatsWritten})');
+    if (s.closedFromSentry > 0 || s.reopenedFromSentry > 0) {
+      stdout.writeln('  (from Sentry: ${s.closedFromSentry} closed, '
+          '${s.reopenedFromSentry} reopened)');
+    }
     for (final w in s.warnings) {
       stdout.writeln('  ⚠️ $w');
     }

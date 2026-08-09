@@ -147,6 +147,57 @@ extension IngestStore on TriageDb {
     return applied;
   }
 
+  /// Bring the local backlog back in line with Sentry.
+  ///
+  /// Sentry stays the authority on whether an issue is still open; this side
+  /// owns the triage opinion. So a resolve in Sentry closes the item here,
+  /// and a regression reopens it — but a state a human set here (hidden,
+  /// known_noise, or a manual resolve) is never overwritten.
+  ///
+  /// Returns how many items each direction moved.
+  ({int closed, int reopened}) reconcileWithSentry({
+    required Iterable<String> unresolvedIds,
+    required Map<String, String> closedStatuses,
+  }) {
+    var closed = 0;
+    var reopened = 0;
+
+    _db.execute('BEGIN');
+    try {
+      for (final id in unresolvedIds) {
+        // Only auto-resolves are reopened: a manual resolve here has
+        // sentry_status 'unresolved' and stays put.
+        _db.execute('''
+          UPDATE issues SET triage_state='new'
+          WHERE sentry_issue_id=? AND triage_state='resolved'
+            AND sentry_status IN ('resolved','ignored')
+        ''', [id]);
+        reopened += _db.updatedRows;
+        _db.execute(
+          "UPDATE issues SET sentry_status='unresolved' WHERE sentry_issue_id=?",
+          [id],
+        );
+      }
+
+      for (final entry in closedStatuses.entries) {
+        _db.execute(
+          'UPDATE issues SET sentry_status=? WHERE sentry_issue_id=?',
+          [entry.value, entry.key],
+        );
+        _db.execute('''
+          UPDATE issues SET triage_state='resolved'
+          WHERE sentry_issue_id=? AND triage_state IN ('new','keep')
+        ''', [entry.key]);
+        closed += _db.updatedRows;
+      }
+      _db.execute('COMMIT');
+    } catch (_) {
+      _db.execute('ROLLBACK');
+      rethrow;
+    }
+    return (closed: closed, reopened: reopened);
+  }
+
   /// Issues worth per-release stats: only triage_state ∈ {new, keep}
   /// (skipping known_noise/hidden), top [limit] by latest count — so the API
   /// budget isn't spent on device noise.

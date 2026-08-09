@@ -7,6 +7,13 @@ class IngestSummary {
   final int fetched;
   final int rulesApplied;
   final int releaseStatsWritten;
+
+  /// Items closed here because Sentry has them resolved or archived.
+  final int closedFromSentry;
+
+  /// Items brought back because Sentry has them open again.
+  final int reopenedFromSentry;
+
   final Map<String, int> stateCounts;
   final List<String> warnings;
 
@@ -14,6 +21,8 @@ class IngestSummary {
     required this.fetched,
     required this.rulesApplied,
     required this.releaseStatsWritten,
+    required this.closedFromSentry,
+    required this.reopenedFromSentry,
     required this.stateCounts,
     required this.warnings,
   });
@@ -22,6 +31,8 @@ class IngestSummary {
         'fetched': fetched,
         'rules_applied': rulesApplied,
         'release_stats_written': releaseStatsWritten,
+        'closed_from_sentry': closedFromSentry,
+        'reopened_from_sentry': reopenedFromSentry,
         'state_counts': stateCounts,
         'warnings': warnings,
       };
@@ -60,6 +71,27 @@ Future<IngestSummary> runIngest(Config cfg, TriageDb db,
       db.insertSnapshot(i);
     }
 
+    // Ask Sentry which issues it considers closed, then line the local
+    // backlog up with it. Without this the list slowly fills with items
+    // someone already dealt with in Sentry.
+    say('Reconciling with resolved/archived issues in Sentry…');
+    var moved = (closed: 0, reopened: 0);
+    try {
+      final closed = await client.closedIssues(statsPeriodDays: cfg.statsPeriodDays);
+      if (closed.truncated) {
+        warnings.add('Sentry has more resolved/archived issues than one run '
+            'reads; some may still show as open here.');
+      }
+      moved = db.reconcileWithSentry(
+        unresolvedIds: [for (final i in issues) i.id],
+        closedStatuses: closed.statuses,
+      );
+      say('Closed ${moved.closed}, reopened ${moved.reopened} from Sentry.');
+    } catch (e) {
+      // A failed reconciliation must not lose the issues just fetched.
+      warnings.add('Could not read resolved/archived issues from Sentry: $e');
+    }
+
     // Triage first, then only fetch per-release stats for new/keep issues —
     // no API budget wasted on known device noise.
     final applied = db.applyRules();
@@ -82,6 +114,8 @@ Future<IngestSummary> runIngest(Config cfg, TriageDb db,
       fetched: issues.length,
       rulesApplied: applied,
       releaseStatsWritten: relCount,
+      closedFromSentry: moved.closed,
+      reopenedFromSentry: moved.reopened,
       stateCounts: db.stateCounts(),
       warnings: warnings,
     );

@@ -156,7 +156,14 @@ class _TriagePageState extends State<TriagePage> {
     try {
       final res = await _api.ingest();
       await _load(silent: true);
-      if (mounted) _snack(tp('ingestDone', {'n': res['fetched'] ?? 0}));
+      if (!mounted) return;
+      final fetched = res['fetched'] ?? 0;
+      // Items disappearing from the list need an explanation; a plain count
+      // would leave the user wondering what happened to them.
+      final closed = (res['closed_from_sentry'] ?? 0) as int;
+      _snack(closed > 0
+          ? tp('ingestClosed', {'n': fetched, 'c': closed})
+          : tp('ingestDone', {'n': fetched}));
     } catch (e) {
       if (mounted) _snack(tp('ingestFail', {'e': e}));
     } finally {
