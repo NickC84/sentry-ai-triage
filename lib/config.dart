@@ -20,6 +20,11 @@ class Config {
   int statsPeriodDays;
   int maxReleaseLookups;
 
+  /// Unattended re-ingest interval for installs that sit on a server; 0 (the
+  /// default) keeps syncing manual. Analysis stays manual either way — it
+  /// costs money, syncing doesn't.
+  int ingestIntervalHours;
+
   // ── AI analysis ──
   /// claude_cli (default; uses your Claude subscription via the `claude` CLI)
   /// or anthropic_api (direct API with a key).
@@ -63,6 +68,7 @@ class Config {
     required this.dbPath,
     required this.statsPeriodDays,
     required this.maxReleaseLookups,
+    required this.ingestIntervalHours,
     required this.aiMode,
     required this.aiModel,
     required this.anthropicApiKey,
@@ -89,6 +95,7 @@ class Config {
     'SENTRY_PROJECT',
     'SENTRY_TOKEN',
     'STATS_PERIOD_DAYS',
+    'INGEST_INTERVAL_HOURS',
     'AI_MODE',
     'AI_MODEL',
     'ANTHROPIC_API_KEY',
@@ -128,6 +135,8 @@ class Config {
       dbPath: AppPaths.resolve(opt('DB_PATH', 'data/triage.db')),
       statsPeriodDays: int.tryParse(opt('STATS_PERIOD_DAYS', '90')) ?? 90,
       maxReleaseLookups: int.tryParse(opt('MAX_RELEASE_LOOKUPS', '50')) ?? 50,
+      ingestIntervalHours:
+          int.tryParse(opt('INGEST_INTERVAL_HOURS', '0')) ?? 0,
       aiMode: opt('AI_MODE', 'claude_cli'),
       aiModel: opt('AI_MODEL', 'sonnet'),
       anthropicApiKey: opt('ANTHROPIC_API_KEY', ''),
@@ -162,6 +171,7 @@ class Config {
         'SENTRY_PROJECT': project,
         'SENTRY_TOKEN': token,
         'STATS_PERIOD_DAYS': '$statsPeriodDays',
+        'INGEST_INTERVAL_HOURS': '$ingestIntervalHours',
         'AI_MODE': aiMode,
         'AI_MODEL': aiModel,
         'ANTHROPIC_API_KEY': anthropicApiKey,
@@ -199,6 +209,8 @@ class Config {
           token = v;
         case 'STATS_PERIOD_DAYS':
           statsPeriodDays = int.tryParse(v) ?? statsPeriodDays;
+        case 'INGEST_INTERVAL_HOURS':
+          ingestIntervalHours = int.tryParse(v) ?? ingestIntervalHours;
         case 'AI_MODE':
           aiMode = v.isEmpty ? 'claude_cli' : v;
         case 'AI_MODEL':

@@ -62,6 +62,8 @@ jobs:
             target: macos-x64
           - os: ubuntu-22.04   # oldest supported glibc — newer distros run this fine
             target: linux-x64
+          - os: ubuntu-22.04-arm   # Pi / ARM servers, common in the IoT + kiosk audience
+            target: linux-arm64
           - os: windows-latest
             target: windows-x64
     steps:
@@ -97,14 +99,15 @@ jobs:
       # bundled build is too new for the host).
       - name: Stage libsqlite3
         if: runner.os == 'Linux'
-        run: cp /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 ./libsqlite3.so.0
+        run: cp /usr/lib/*-linux-gnu/libsqlite3.so.0 ./libsqlite3.so.0   # arch-agnostic (x64 + arm64)
 
       - name: Build bundle
         shell: bash
         run: |
           name="sentry-ai-triage-${TAG}-${{ matrix.target }}"
           echo "BUNDLE_NAME=$name" >> "$GITHUB_ENV"
-          packaging/build_bundle.sh --out "dist/$name" --web "$PWD/web-ui"
+          packaging/build_bundle.sh --out "dist/$name" --web "$PWD/web-ui" \
+            --version "${TAG#v}"
 
       - name: Zip
         if: runner.os != 'Windows'
@@ -143,6 +146,41 @@ jobs:
           name: bundle-${{ matrix.target }}
           path: dist/*.zip
           if-no-files-found: error
+
+  image:
+    name: Publish container image
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      # GHCR rejects uppercase repository names, and GitHub usernames often
+      # have them.
+      - name: Resolve image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # amd64 only: the image builds the Flutter web UI from source, and doing
+      # that under arm64 emulation costs more wall-clock than it is worth.
+      # ARM users are served by the linux-arm64 release bundle instead.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          build-args: APP_VERSION=${{ env.TAG }}
+          tags: |
+            ${{ env.IMAGE }}:${{ env.TAG }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   publish:
     name: Publish release

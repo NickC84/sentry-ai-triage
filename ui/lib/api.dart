@@ -165,6 +165,10 @@ class TriageApi {
   /// Settings: read current config (secrets masked by the server).
   Future<Map<String, dynamic>> getConfig() => _getJson('/api/config');
 
+  /// Settings: environment self-check (CLIs installed / logged in, config
+  /// completeness) plus the running build's version.
+  Future<Map<String, dynamic>> toolsHealth() => _getJson('/api/health/tools');
+
   /// Settings: save config values.
   Future<void> saveConfig(Map<String, String> values) async {
     final resp = await http.post(

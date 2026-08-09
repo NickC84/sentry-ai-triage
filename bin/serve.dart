@@ -4,6 +4,7 @@ import 'package:sentry_triage/api_server.dart';
 import 'package:sentry_triage/app_paths.dart';
 import 'package:sentry_triage/config.dart';
 import 'package:sentry_triage/db.dart';
+import 'package:sentry_triage/version.dart';
 
 /// Backend entry point: serves the local API (and the built web UI).
 ///
@@ -13,6 +14,8 @@ import 'package:sentry_triage/db.dart';
 /// Boots with zero configuration — open the UI and fill in Settings, then hit
 /// "Sync from Sentry". No .env editing required.
 Future<void> main(List<String> args) async {
+  if (handledVersionFlag(args)) return;
+
   final cfg = Config.load();
 
   // Create the data dir / empty DB on first run.
@@ -40,7 +43,7 @@ Future<void> main(List<String> args) async {
   }
 
   final base = 'http://${host == '0.0.0.0' ? 'localhost' : host}:${server.port}';
-  stdout.writeln('🚀 sentry-ai-triage is running: $base');
+  stdout.writeln('🚀 sentry-ai-triage $appVersion is running: $base');
   if (server.port != requestedPort) {
     stdout.writeln(
         '   ℹ️ Port $requestedPort was busy — using ${server.port} instead.');
@@ -58,6 +61,9 @@ Future<void> main(List<String> args) async {
         '   ℹ️ Web UI not built yet. Run: cd ui && flutter build web --no-web-resources-cdn');
   }
   stdout.writeln('   Ctrl-C to stop.');
+
+  // After the banner so the schedule notice reads as part of it.
+  apiServer.rescheduleIngest();
 
   // Auto-open the browser when the UI is available (disable with NO_OPEN=1).
   if (hasUi && Platform.environment['NO_OPEN'] != '1') {

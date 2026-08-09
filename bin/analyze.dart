@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sentry_triage/ai_analyzer.dart';
 import 'package:sentry_triage/config.dart';
 import 'package:sentry_triage/db.dart';
+import 'package:sentry_triage/version.dart';
 
 /// Phase 2: batch AI analysis for new/keep issues above the threshold.
 ///
@@ -12,6 +13,8 @@ import 'package:sentry_triage/db.dart';
 /// - input_context_hash cache: skip when the input hasn't changed meaningfully.
 /// - known_noise / hidden are never sent.
 Future<void> main(List<String> args) async {
+  if (handledVersionFlag(args)) return;
+
   final cfg = Config.load();
 
   final dbFile = File(cfg.dbPath);

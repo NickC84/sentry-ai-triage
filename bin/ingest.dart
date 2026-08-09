@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:sentry_triage/config.dart';
 import 'package:sentry_triage/db.dart';
 import 'package:sentry_triage/ingest.dart';
+import 'package:sentry_triage/version.dart';
 
 /// Fetch Sentry issues → SQLite → apply triage rules → print a summary.
 /// (The web UI's "Sync from Sentry" button runs the same flow.)
 Future<void> main(List<String> args) async {
+  if (handledVersionFlag(args)) return;
+
   final cfg = Config.load();
 
   final missing = cfg.missingForIngest;

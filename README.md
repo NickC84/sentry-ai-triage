@@ -68,7 +68,7 @@ SQLite library.
 1. Grab the zip for your machine from
    [**Releases**](https://github.com/NickC84/sentry-ai-triage/releases/latest) —
    `macos-arm64` (Apple Silicon), `macos-x64` (Intel), `linux-x64`,
-   `windows-x64`.
+   `linux-arm64` (Pi / ARM servers), `windows-x64`.
 2. Unzip it anywhere you like.
 3. Launch:
    - **macOS** — double-click **`start.command`**. If macOS blocks it as
@@ -91,17 +91,21 @@ Solves the toolchain in one shot, at the cost of two mounts: the AI runs on
 the image.
 
 ```bash
-git clone https://github.com/NickC84/sentry-ai-triage
-cd sentry-ai-triage
-echo "APP_REPO_PATH=/absolute/path/to/your/app-repo" > .env
+# Log the container's Claude CLI in once — the credentials persist in ~/.claude
+docker run -it --rm -v "$HOME/.claude:/root/.claude" \
+  ghcr.io/nickc84/sentry-ai-triage:latest claude
 
-docker compose run --rm --entrypoint claude triage   # log in once; persists
-docker compose up -d --build                         # → http://localhost:8787
+docker run -d -p 8787:8787 \
+  -v "$PWD/data:/app/data" \
+  -v "$HOME/.claude:/root/.claude" \
+  -v "/path/to/your/app-repo:/workspace" \
+  -e APP_REPO_PATH=/workspace \
+  ghcr.io/nickc84/sentry-ai-triage:latest
 ```
 
-`docker-compose.yml` mounts `./data` (database + settings), `~/.claude`
-(subscription credentials) and your app repo at `/workspace`. Plain
-`docker run` works too — see the compose file for the equivalent flags.
+The published image is `linux/amd64`; on ARM hardware use the `linux-arm64`
+release bundle instead. To build it yourself, `docker-compose.yml` in the
+repo does the same thing from source (`docker compose up -d --build`).
 
 #### C · From source
 
@@ -141,6 +145,13 @@ links straight to Sentry's token screen and tells you which two scopes to
 tick — then hit **auto-detect** to fill in your org/project. Back on the
 main screen, hit **Sync from Sentry**. Everything else is optional.
 
+The **Environment check** at the top of Settings tells you whether the Claude
+CLI is installed *and logged in*, whether `gh` is authenticated, and whether
+your app repo path is really a git repo — so a missing prerequisite shows up
+as a red row with the command to fix it, not as a failed analysis later. Set
+**auto-sync** there too if this install lives on a server (analysis stays
+manual — it costs money, syncing doesn't).
+
 For what every button does (noise rules, AI analysis, ticketing, sync…),
 open **Settings → User guide** — the full manual is built into the app, in
 English and 繁體中文.
@@ -162,7 +173,7 @@ Everything the UI does is scriptable (cron-friendly). From a release bundle:
 ```
 
 From source, the same three are `dart run bin/ingest.dart`,
-`bin/analyze.dart`, `bin/feature.dart`.
+`bin/analyze.dart`, `bin/feature.dart`. Every binary takes `--version`.
 
 ## How the AI engine works
 
@@ -264,7 +275,7 @@ Sentry 拉取 → 規則過濾噪音 → 長期趨勢
 
 1. 到 [**Releases**](https://github.com/NickC84/sentry-ai-triage/releases/latest)
    抓你機器對應的壓縮檔——`macos-arm64`（Apple Silicon）、`macos-x64`（Intel）、
-   `linux-x64`、`windows-x64`。
+   `linux-x64`、`linux-arm64`（樹莓派／ARM 伺服器）、`windows-x64`。
 2. 解壓縮到任何你喜歡的位置。
 3. 啟動：
    - **macOS**——雙擊 **`start.command`**。若被 macOS 擋下（未簽章），執行一次：
@@ -281,15 +292,19 @@ Sentry 拉取 → 規則過濾噪音 → 長期趨勢
 一次解決所有工具鏈問題，代價是兩個 mount：AI 跑在**你的** Claude 登入上、讀**你的** App repo，這兩樣都不可能包進 image 裡。
 
 ```bash
-git clone https://github.com/NickC84/sentry-ai-triage
-cd sentry-ai-triage
-echo "APP_REPO_PATH=/你的/app-repo/絕對路徑" > .env
+# 先讓容器裡的 Claude CLI 登入一次，憑證會留在 ~/.claude
+docker run -it --rm -v "$HOME/.claude:/root/.claude" \
+  ghcr.io/nickc84/sentry-ai-triage:latest claude
 
-docker compose run --rm --entrypoint claude triage   # 登入一次，之後會保留
-docker compose up -d --build                         # → http://localhost:8787
+docker run -d -p 8787:8787 \
+  -v "$PWD/data:/app/data" \
+  -v "$HOME/.claude:/root/.claude" \
+  -v "/你的/app-repo/絕對路徑:/workspace" \
+  -e APP_REPO_PATH=/workspace \
+  ghcr.io/nickc84/sentry-ai-triage:latest
 ```
 
-`docker-compose.yml` 會掛載 `./data`（資料庫與設定）、`~/.claude`（訂閱憑證）以及你的 App repo（掛到 `/workspace`）。想用純 `docker run` 也可以，參數對照看 compose 檔。
+發佈的 image 是 `linux/amd64`；ARM 機器請改用 `linux-arm64` 的 release 壓縮檔。想自己 build，repo 裡的 `docker-compose.yml` 會從原始碼做同一件事（`docker compose up -d --build`）。
 
 #### C · 從原始碼跑
 
@@ -323,6 +338,8 @@ packaging/build_bundle.sh --out dist/my-build
 
 打開**設定**（齒輪圖示）：貼上唯讀的 Sentry token——設定頁有直達 Sentry token 頁面的連結，也寫明要勾哪兩個權限——然後按**自動偵測**填入 org／project。回主畫面按**從 Sentry 拉取**，完成。其他都是選用。
 
+設定頁最上面的**環境檢查**會告訴你：Claude CLI 有沒有裝、**有沒有登入**、`gh` 有沒有認證、填的 App repo 路徑是不是真的 git repo——少了什麼會直接顯示紅色一行加上修復指令，而不是等分析跑到一半才失敗。放在伺服器上的話，也可以在這裡設定**自動同步**（分析仍維持手動——那個要花錢，同步不用）。
+
 每個按鈕在做什麼（噪音規則、AI 分析、開票、同步…），打開**設定 → 使用說明**——完整操作手冊就內建在 app 裡，中英雙語。
 
 ![設定頁——token 直達連結、自動偵測、進階收合](docs/screenshots/settings.png)
@@ -337,7 +354,7 @@ UI 能做的都能用指令跑（適合排程）。用 release bundle 的話：
 ./sentry-triage-feature     # 需求可行性分析
 ```
 
-從原始碼跑則是 `dart run bin/ingest.dart`、`bin/analyze.dart`、`bin/feature.dart`。
+從原始碼跑則是 `dart run bin/ingest.dart`、`bin/analyze.dart`、`bin/feature.dart`。每支執行檔都支援 `--version`。
 
 ## AI 引擎怎麼運作
 

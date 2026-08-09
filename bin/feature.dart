@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:sentry_triage/ai_analyzer.dart';
 import 'package:sentry_triage/config.dart';
+import 'package:sentry_triage/version.dart';
 
 /// Feed a feature description to the AI and let it **read your app repo** to
 /// assess feasibility.
 ///
 ///   dart run bin/feature.dart "show a waiting-count badge in the top bar"
 Future<void> main(List<String> args) async {
+  if (handledVersionFlag(args)) return;
+
   if (args.isEmpty) {
     stderr.writeln('Usage: dart run bin/feature.dart "<feature description>"');
     exit(1);

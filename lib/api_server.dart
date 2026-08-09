@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,14 +10,18 @@ import 'package:shelf_static/shelf_static.dart';
 import 'ai_analyzer.dart';
 import 'config.dart';
 import 'db.dart';
+import 'env_check.dart';
 import 'github.dart';
 import 'ingest.dart';
 import 'pr_maker.dart';
 import 'sentry_client.dart';
+import 'version.dart';
 
 part 'api/config_routes.dart';
 part 'api/issue_routes.dart';
 part 'api/github_routes.dart';
+part 'api/health_routes.dart';
+part 'api/scheduler.dart';
 
 /// Local backend for the web UI: exposes triage.db as a JSON API, accepts
 /// manual triage writes, on-demand AI analysis, Sentry ingest, GitHub
@@ -37,6 +42,7 @@ class ApiServer {
   late GithubTicketer _ticketer;
   late PrMaker _prMaker;
   bool _ingestRunning = false;
+  Timer? _ingestTimer;
 
   ApiServer(this.db, this.cfg, {this.webRoot}) {
     _buildEngines();
@@ -67,7 +73,8 @@ class ApiServer {
 
   Handler get _router {
     final router = Router()
-      ..get('/api/health', (Request r) => _json({'ok': true}))
+      ..get('/api/health', (Request r) => _json({'ok': true, 'version': appVersion}))
+      ..get('/api/health/tools', _toolsHealth)
       ..get('/api/summary', _summary)
       ..get('/api/issues', _listIssues)
       ..get('/api/issues/<id>/releases', _releases)
@@ -108,9 +115,7 @@ class ApiServer {
       handler = _router;
     }
 
-    final server =
-        await shelf_io.serve(pipeline.addHandler(handler), host, port);
-    return server;
+    return shelf_io.serve(pipeline.addHandler(handler), host, port);
   }
 }
 

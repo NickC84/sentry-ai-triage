@@ -11,10 +11,12 @@ set -euo pipefail
 
 out=""
 web=""
+version="dev"
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) out="$2"; shift 2 ;;
     --web) web="$2"; shift 2 ;;
+    --version) version="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -41,9 +43,12 @@ fi
 rm -rf "$out"
 mkdir -p "$out"
 
-echo "▶ compiling binaries"
+echo "▶ compiling binaries ($version)"
 compile() { # <entry point> <output name>
-  dart compile exe "bin/$1.dart" -o "$out/$2$exe" --verbosity=warning
+  # The version is baked in so `--version` and the UI can report which build
+  # this is — a binary that can't say is untriageable in a bug report.
+  dart compile exe "bin/$1.dart" -o "$out/$2$exe" \
+    -DAPP_VERSION="$version" --verbosity=warning
 }
 compile serve   sentry-triage
 compile ingest  sentry-triage-ingest

@@ -16,15 +16,17 @@ RUN cd ui && flutter build web --no-web-resources-cdn
 
 # ── 2 · backend binaries ──────────────────────────────────────────────
 FROM dart:3.5 AS backend
+ARG APP_VERSION=dev
 WORKDIR /src
 COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get
 COPY . .
 RUN dart pub get --offline \
- && dart compile exe bin/serve.dart   -o /out/sentry-triage \
- && dart compile exe bin/ingest.dart  -o /out/sentry-triage-ingest \
- && dart compile exe bin/analyze.dart -o /out/sentry-triage-analyze \
- && dart compile exe bin/feature.dart -o /out/sentry-triage-feature
+ && for entry in serve ingest analyze feature; do \
+      out="/out/sentry-triage"; \
+      [ "$entry" = "serve" ] || out="/out/sentry-triage-$entry"; \
+      dart compile exe "bin/$entry.dart" -o "$out" -DAPP_VERSION="$APP_VERSION"; \
+    done
 
 # ── 3 · runtime ───────────────────────────────────────────────────────
 FROM debian:bookworm-slim

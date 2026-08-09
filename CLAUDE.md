@@ -31,19 +31,25 @@ lib/app_paths.dart     resolves data/web/rules against the executable, so a
 lib/process_runner.dart PATH resolution + install hints for claude / gh / git
                          (also fixes Windows .cmd shims)
 lib/sqlite_loader.dart  loads a bundled sqlite3.dll / libsqlite3 when present
+lib/env_check.dart     Settings self-diagnosis (CLIs installed/logged in,
+                         config completeness) — emits codes, never prose
+lib/version.dart       APP_VERSION stamped in at compile time + --version
 lib/sentry_client.dart read-only Sentry REST client (issues + release tags)
 lib/db.dart            SQLite core (schema/migrations); queries live in
 lib/db/                  ingest_store / issue_queries / analysis_store /
                          github_store (part files, grouped by domain)
 lib/api_server.dart    server core (engines/router/static hosting); routes in
-lib/api/                 config_routes / issue_routes / github_routes
+lib/api/                 config_routes / issue_routes / github_routes /
+                         health_routes / scheduler (auto-ingest timer)
 lib/ai_analyzer.dart   AI orchestration; split into
 lib/ai/                  models / prompts / engines (CLI + Anthropic API)
 lib/github.dart        tickets via gh CLI (or GITHUB_TOKEN)
 lib/pr_maker.dart      worktree branch → claude edits → push → draft PR
 rules/                 default triage rules seeded on first run
 packaging/             build_bundle.sh (release zip contents) + per-OS launchers
-.github/workflows/     ci.yml (analyze + web build), release.yml (tag → binaries)
+test/                  rule matching, config/env-check, path resolution
+.github/workflows/     ci.yml (analyze + test + web build),
+                         release.yml (tag → binaries + GHCR image)
 ui/lib/                Flutter Web frontend, one file per screen:
                          main (app shell) / triage_page / issue_detail /
                          settings_page / help_page, shared pieces in
@@ -99,8 +105,11 @@ dart run bin/serve.dart          # http://localhost:8787, serves UI + API
 # UI hot reload:
 #   cd ui && flutter run -d chrome --dart-define=API_BASE=http://localhost:8787
 # Checks:
-dart analyze lib bin && cd ui && flutter analyze
+dart analyze lib bin && dart test && cd ui && flutter analyze
 ```
+
+Tests must never call `Config.load()` / `Config.applyAndSave()` — both read
+and write the real `data/config.json`. Construct a `Config` directly instead.
 
 Release bundles (what users actually download — binaries + prebuilt web, no
 Dart/Flutter needed) are assembled by `packaging/build_bundle.sh`; pushing a

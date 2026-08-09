@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'env_check_card.dart';
 import 'help_page.dart';
 import 'i18n.dart';
 import 'ui_helpers.dart';
@@ -31,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
     'SENTRY_PROJECT',
     'SENTRY_TOKEN',
     'STATS_PERIOD_DAYS',
+    'INGEST_INTERVAL_HOURS',
     'AI_MODEL',
     'ANTHROPIC_API_KEY',
     'CLI_COMMAND',
@@ -212,6 +214,7 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.all(20),
           children: [
             const _PreferenceCards(),
+            EnvCheckCard(api: widget.api),
             _section(t('settingsSentry'), [
               _tokenHelp(),
               _field('SENTRY_TOKEN', t('settingsToken'), secret: true),
@@ -226,6 +229,7 @@ class _SettingsPageState extends State<SettingsPage> {
               _field('SENTRY_PROJECT', t('settingsProject')),
               _field('SENTRY_BASE_URL', t('settingsSentryBase')),
               _field('STATS_PERIOD_DAYS', t('settingsPeriod')),
+              _field('INGEST_INTERVAL_HOURS', t('settingsIngestInterval')),
             ]),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,

@@ -194,6 +194,62 @@ class I18n {
     ],
     'genericFail': ['Failed: {e}', '失敗：{e}'],
     'syncedN': ['Synced {n} GitHub ticket/PR states', '已同步 {n} 個 GitHub 票/PR 狀態'],
+    // environment check (Settings page) — row labels
+    'envTitle': ['Environment check', '環境檢查'],
+    'envRecheck': ['Re-check', '重新檢查'],
+    'envVersion': ['Version {v}', '版本 {v}'],
+    'envFail': ['Check failed: {e}', '檢查失敗：{e}'],
+    'env_sentry': ['Sentry', 'Sentry'],
+    'env_ai': ['AI engine', 'AI 引擎'],
+    'env_githubCli': ['GitHub CLI', 'GitHub CLI'],
+    'env_githubRepo': ['GitHub repo', 'GitHub repo'],
+    'env_git': ['git', 'git'],
+    'env_appRepo': ['App repo', 'App repo'],
+    // environment check — messages (keyed by the backend's code)
+    'envMsg_sentryReady': ['Connected: {org}/{project}', '已連線：{org}/{project}'],
+    'envMsg_sentryMissing': ['Not configured yet: {keys}', '尚未設定：{keys}'],
+    'envMsg_apiKeyMissing': [
+      'AI mode is anthropic_api but no API key is set',
+      'AI 模式是 anthropic_api，但沒填 API key'
+    ],
+    'envMsg_apiKeyReady': ['Anthropic API key set', '已設定 Anthropic API key'],
+    'envMsg_cliNotFound': [
+      '`{command}` not found on PATH — install it with: npm install -g @anthropic-ai/claude-code',
+      '在 PATH 找不到 `{command}`——安裝：npm install -g @anthropic-ai/claude-code'
+    ],
+    'envMsg_cliLoggedOut': [
+      '{version} installed, but not logged in — run: claude auth login',
+      '已安裝 {version}，但尚未登入——執行：claude auth login'
+    ],
+    'envMsg_cliLoginUnknown': [
+      '{version} — login status unavailable (custom CLI?)',
+      '{version}——讀不到登入狀態（自訂 CLI？）'
+    ],
+    'envMsg_cliReady': ['{version} · logged in ({plan})', '{version}·已登入（{plan}）'],
+    'envMsg_ghNotFound': [
+      'Not installed — tickets and draft PRs stay unavailable',
+      '未安裝——開票與草稿 PR 無法使用'
+    ],
+    'envMsg_ghLoggedOut': [
+      '{version} installed, but not logged in — run: gh auth login',
+      '已安裝 {version}，但尚未登入——執行：gh auth login'
+    ],
+    'envMsg_ghToken': ['{version} · using GITHUB_TOKEN', '{version}·使用 GITHUB_TOKEN'],
+    'envMsg_ghReady': ['{version} · logged in', '{version}·已登入'],
+    'envMsg_gitNotFound': [
+      'Not installed — draft PRs need it',
+      '未安裝——草稿 PR 需要它'
+    ],
+    'envMsg_gitReady': ['{version}', '{version}'],
+    'envMsg_repoMissing': ['Not set — ticketing is off', '未設定——開票功能關閉'],
+    'envMsg_repoReady': ['{repo}', '{repo}'],
+    'envMsg_appRepoMissing': [
+      'Not set — feature analysis and draft PRs are off',
+      '未設定——需求分析與草稿 PR 關閉'
+    ],
+    'envMsg_appRepoNotFound': ['Path does not exist: {path}', '路徑不存在：{path}'],
+    'envMsg_appRepoNotGit': ['Not a git repository: {path}', '不是 git repo：{path}'],
+    'envMsg_appRepoReady': ['{path}', '{path}'],
     // settings page
     'settingsTitle': ['Settings', '設定'],
     'settingsSave': ['Save', '儲存'],
@@ -208,6 +264,10 @@ class I18n {
     'settingsProject': ['Project slug', 'Project slug'],
     'settingsToken': ['Auth token (read-only: project:read + event:read)', 'Auth Token（唯讀：project:read + event:read）'],
     'settingsPeriod': ['Stats period (days)', '統計期間（天）'],
+    'settingsIngestInterval': [
+      'Auto-sync every N hours (0 = manual only)',
+      '每 N 小時自動同步（0 = 只手動）'
+    ],
     'settingsAi': ['AI analysis', 'AI 分析'],
     'settingsAiMode': ['Engine', '引擎'],
     'settingsAiModeCli': ['Claude Code CLI (subscription — no API cost)', 'Claude Code CLI（訂閱制，零 API 費）'],

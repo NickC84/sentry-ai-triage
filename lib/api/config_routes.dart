@@ -37,6 +37,7 @@ extension ConfigRoutes on ApiServer {
 
     final changed = cfg.applyAndSave(body);
     _buildEngines();
+    rescheduleIngest();
     return _json({'ok': true, 'changed': changed});
   }
 
