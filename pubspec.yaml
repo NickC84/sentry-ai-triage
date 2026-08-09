@@ -1,7 +1,7 @@
 name: sentry_triage
 description: Self-hosted Sentry triage with AI analysis — rule-based noise filtering, Claude-powered severity/root-cause analysis, GitHub ticketing and draft PRs.
 publish_to: none
-version: 1.1.0
+version: 1.2.0
 
 environment:
   sdk: ^3.5.0
