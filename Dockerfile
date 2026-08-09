@@ -8,6 +8,9 @@
 
 # ── 1 · web UI ────────────────────────────────────────────────────────
 FROM ghcr.io/cirruslabs/flutter:3.24.0 AS ui
+# The SDK checkout is owned by another user inside the image; without this,
+# git refuses it and every flutter command fails on version detection.
+RUN git config --global --add safe.directory /sdks/flutter
 WORKDIR /src
 COPY ui/pubspec.yaml ui/pubspec.lock ./ui/
 RUN cd ui && flutter pub get
@@ -21,7 +24,9 @@ WORKDIR /src
 COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get
 COPY . .
-RUN dart pub get --offline \
+# `dart compile exe -o` does not create the output directory.
+RUN mkdir -p /out \
+ && dart pub get --offline \
  && for entry in serve ingest analyze feature; do \
       out="/out/sentry-triage"; \
       [ "$entry" = "serve" ] || out="/out/sentry-triage-$entry"; \
