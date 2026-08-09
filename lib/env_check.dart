@@ -145,9 +145,12 @@ Future<String?> _firstLine(String command, List<String> args) async {
   return out.isEmpty ? null : out.split('\n').first.trim();
 }
 
+/// Parses stdout as JSON *regardless of exit code*: `claude auth status`
+/// reports a logged-out CLI with valid JSON and exit 1, and treating that as
+/// "unknown" would hide the single most common setup failure.
 Future<Map<String, dynamic>?> _json(String command, List<String> args) async {
   final res = await _run(command, args);
-  if (res == null || res.exitCode != 0) return null;
+  if (res == null) return null;
   try {
     return jsonDecode(res.stdout.toString()) as Map<String, dynamic>;
   } catch (_) {
