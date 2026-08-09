@@ -68,6 +68,7 @@ extension IssueQueries on TriageDb {
   Map<String, Object?>? issueById(String id) {
     final rs = _db.select('''
       SELECT i.sentry_issue_id, i.short_id, i.title, i.culprit, i.level,
+        i.category, i.triage_state, i.source, i.detail,
         i.first_seen, i.last_seen,
         (SELECT total_count FROM issue_snapshots s
           WHERE s.sentry_issue_id = i.sentry_issue_id
