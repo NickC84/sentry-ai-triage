@@ -1,0 +1,11 @@
+.git
+.github
+.dart_tool
+ui/.dart_tool
+ui/build
+build
+dist
+data
+*.db
+.env
+docs/screenshots

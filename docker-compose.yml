@@ -1,0 +1,29 @@
+# docker compose up -d --build   →  http://localhost:8787
+#
+# First run, log the container's Claude CLI in once (the credentials land in
+# the mounted ~/.claude and persist):
+#   docker compose run --rm --entrypoint claude triage
+#
+# APP_REPO_PATH points at the repo you want the AI to read for feature
+# analysis and draft PRs; set it in a .env next to this file, e.g.
+#   APP_REPO_PATH=/Users/you/code/my-app
+
+services:
+  triage:
+    build: .
+    image: sentry-ai-triage:local
+    ports:
+      - "${PORT:-8787}:8787"
+    volumes:
+      # Database + settings (survives image rebuilds).
+      - ./data:/app/data
+      # Your Claude subscription credentials.
+      - ${HOME}/.claude:/root/.claude
+      # The app repo the AI reads/edits — read-write, because draft PRs need
+      # to create a git worktree branch. Nothing is ever merged.
+      - ${APP_REPO_PATH:-./workspace}:/workspace
+    environment:
+      # Inside the container the repo is always at /workspace, whatever the
+      # host path is.
+      APP_REPO_PATH: /workspace
+    restart: unless-stopped

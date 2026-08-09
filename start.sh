@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# One-click launcher (macOS / Linux): builds the web UI on first run, then
-# starts the local server and opens your browser.
-#   ./start.sh             normal start
-#   ./start.sh --rebuild   force-rebuild the web UI
+# Launcher for a source checkout — needs Dart, and Flutter for the first
+# build. Not the recommended path for users: the GitHub release zips contain
+# prebuilt binaries and web assets and need neither.
+#   ./start.sh              normal start
+#   ./start.sh --rebuild    force-rebuild the web UI
+#   ./start.sh --port 9000  custom port
 set -e
 cd "$(dirname "$0")"
 
@@ -17,10 +19,14 @@ fi
 dart pub get >/dev/null 2>&1 || dart pub get
 
 # Build the web UI on first run (or with --rebuild).
-if [ "$1" = "--rebuild" ] || [ ! -f ui/build/web/index.html ]; then
+rebuild=""
+if [ "${1:-}" = "--rebuild" ]; then rebuild=1; shift; fi
+if [ -n "$rebuild" ] || [ ! -f ui/build/web/index.html ]; then
   if ! command -v flutter >/dev/null 2>&1; then
     echo "❌ Flutter not found — it's needed once to build the web UI."
-    echo "   Install it (https://flutter.dev), then re-run this script."
+    echo "   Install it (https://flutter.dev), then re-run this script —"
+    echo "   or grab a release zip, which already contains the built UI:"
+    echo "   https://github.com/NickC84/sentry-ai-triage/releases"
     echo "   (press any key to close)"; read -n 1 -s; exit 1
   fi
   echo "🧱 Building the web UI (first run only, takes a minute)…"
@@ -31,4 +37,4 @@ fi
 echo "🚀 Starting… your browser will open http://localhost:${PORT:-8787}"
 echo "   First time? Open Settings in the UI and fill in your Sentry info."
 echo "   (stop with Ctrl-C in this window)"
-exec dart run bin/serve.dart
+exec dart run bin/serve.dart "$@"

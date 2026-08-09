@@ -5,7 +5,7 @@ part of '../ai_analyzer.dart';
 extension AiEngines on AiAnalyzer {
   Future<_EngineResult> _callCli(String prompt, Map<String, dynamic> schema,
       String workingDir, Duration t) async {
-    final result = await Process.run(
+    final result = await runCommand(
       cliCommand,
       [
         '-p', prompt,
@@ -14,7 +14,8 @@ extension AiEngines on AiAnalyzer {
         '--model', model,
       ],
       workingDirectory: workingDir,
-    ).timeout(t);
+      timeout: t,
+    );
 
     if (result.exitCode != 0) {
       throw Exception(

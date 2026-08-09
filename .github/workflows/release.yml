@@ -1,0 +1,171 @@
+name: Release
+
+# Builds the whole thing once, here, so nobody downstream needs Dart or
+# Flutter: the web UI is built on Linux and reused by every platform job,
+# which compiles native binaries and ships them as a ready-to-run zip.
+#
+# Trigger: push a tag (`git tag v0.2.0 && git push --tags`), or run this
+# workflow manually against an existing tag.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and publish (e.g. v0.2.0)'
+        required: true
+
+# Pinned on purpose: a floating toolchain is how "works on my machine"
+# release builds happen. Bump both deliberately.
+env:
+  FLUTTER_VERSION: '3.24.0'
+  DART_VERSION: '3.5.0'
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  web:
+    name: Build web UI
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build
+        run: |
+          cd ui
+          flutter pub get
+          flutter build web --no-web-resources-cdn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-ui
+          path: ui/build/web
+          retention-days: 7
+          if-no-files-found: error
+
+  bundle:
+    name: Bundle ${{ matrix.target }}
+    needs: web
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: macos-arm64
+          - os: macos-13
+            target: macos-x64
+          - os: ubuntu-22.04   # oldest supported glibc — newer distros run this fine
+            target: linux-x64
+          - os: windows-latest
+            target: windows-x64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-ui
+          path: web-ui
+
+      # Windows has no system SQLite, so the bundle carries its own copy.
+      # The version is read off sqlite.org's download manifest rather than
+      # hardcoded, so this doesn't rot into a 404.
+      - name: Fetch sqlite3.dll
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $page = (Invoke-WebRequest -UseBasicParsing https://www.sqlite.org/download.html).Content
+          $m = [regex]::Match($page, 'PRODUCT,[^,]+,(?<path>\d{4}/sqlite-dll-win-x64-\d+\.zip)')
+          if (-not $m.Success) { throw 'Could not find sqlite-dll-win-x64 in sqlite.org download manifest' }
+          $url = "https://www.sqlite.org/$($m.Groups['path'].Value)"
+          Write-Host "downloading $url"
+          Invoke-WebRequest -UseBasicParsing $url -OutFile sqlite.zip
+          Expand-Archive sqlite.zip -DestinationPath sqlite-dll -Force
+          Copy-Item (Get-ChildItem -Recurse -Filter sqlite3.dll sqlite-dll | Select-Object -First 1).FullName sqlite3.dll
+
+      # Linux distros usually have libsqlite3, but minimal images don't —
+      # ship one as a fallback (the loader prefers the system copy if the
+      # bundled build is too new for the host).
+      - name: Stage libsqlite3
+        if: runner.os == 'Linux'
+        run: cp /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 ./libsqlite3.so.0
+
+      - name: Build bundle
+        shell: bash
+        run: |
+          name="sentry-ai-triage-${TAG}-${{ matrix.target }}"
+          echo "BUNDLE_NAME=$name" >> "$GITHUB_ENV"
+          packaging/build_bundle.sh --out "dist/$name" --web "$PWD/web-ui"
+
+      - name: Zip
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cd dist && zip -qry "$BUNDLE_NAME.zip" "$BUNDLE_NAME"
+
+      - name: Zip
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "dist/$env:BUNDLE_NAME" -DestinationPath "dist/$env:BUNDLE_NAME.zip"
+
+      # Runs the packaged binary from an unrelated directory — the exact thing
+      # a user does after unzipping, and the case where path resolution and a
+      # missing SQLite library would break.
+      - name: Smoke test
+        shell: bash
+        run: |
+          exe=""
+          if [ "$RUNNER_OS" = "Windows" ]; then exe=".exe"; fi   # `&&` would trip set -e
+          bundle="$PWD/dist/$BUNDLE_NAME"
+          cd "$HOME"
+          NO_OPEN=1 PORT=8899 "$bundle/sentry-triage$exe" &
+          pid=$!
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:8899/api/health >/dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          [ "$ok" = "1" ] || { echo "server never became healthy"; kill $pid 2>/dev/null; exit 1; }
+          curl -sf -o /dev/null http://localhost:8899/ || { echo "web UI not served"; kill $pid 2>/dev/null; exit 1; }
+          kill $pid 2>/dev/null || true
+          echo "✅ ran from $HOME, API + UI both responded"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.target }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: bundle
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.zip dist/SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" dist/*.zip dist/SHA256SUMS.txt \
+              --title "$TAG" --generate-notes
+          fi

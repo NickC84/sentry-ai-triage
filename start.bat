@@ -1,6 +1,7 @@
 @echo off
-rem One-click launcher (Windows): builds the web UI on first run, then
-rem starts the local server and opens your browser.
+rem Launcher for a source checkout - needs Dart, and Flutter for the first
+rem build. Not the recommended path for users: the GitHub release zips contain
+rem prebuilt binaries and web assets and need neither.
 rem   start.bat             normal start
 rem   start.bat --rebuild   force-rebuild the web UI
 cd /d "%~dp0"
@@ -24,7 +25,9 @@ goto run
 where flutter >nul 2>nul
 if errorlevel 1 (
   echo [x] Flutter not found - it's needed once to build the web UI.
-  echo     Install it ^(https://flutter.dev^), then re-run this script.
+  echo     Install it ^(https://flutter.dev^), then re-run this script - or
+  echo     grab a release zip, which already contains the built UI:
+  echo     https://github.com/NickC84/sentry-ai-triage/releases
   pause
   exit /b 1
 )
@@ -38,4 +41,4 @@ popd
 echo [run] Starting... your browser will open http://localhost:8787
 echo       First time? Open Settings in the UI and fill in your Sentry info.
 echo       (stop with Ctrl-C in this window)
-dart run bin/serve.dart
+dart run bin/serve.dart %*

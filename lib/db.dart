@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:sqlite3/sqlite3.dart';
 
+import 'app_paths.dart';
 import 'sentry_client.dart';
+import 'sqlite_loader.dart';
 
 part 'db/ingest_store.dart';
 part 'db/issue_queries.dart';
@@ -22,6 +24,7 @@ class TriageDb {
   TriageDb._(this._db);
 
   factory TriageDb.open(String path) {
+    configureSqlite3();
     final db = sqlite3.open(path);
     final t = TriageDb._(db);
     t._migrate();

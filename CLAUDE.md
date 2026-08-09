@@ -26,6 +26,11 @@ bin/serve.dart         backend entry point: local API server (default :8787)
 bin/analyze.dart       batch AI analysis (thresholds / cache / cost guardrails)
 bin/feature.dart       feature feasibility CLI (Claude reads the app repo)
 lib/config.dart        config: env > .env > data/config.json (Settings UI)
+lib/app_paths.dart     resolves data/web/rules against the executable, so a
+                         compiled release binary works from any cwd (TRIAGE_HOME)
+lib/process_runner.dart PATH resolution + install hints for claude / gh / git
+                         (also fixes Windows .cmd shims)
+lib/sqlite_loader.dart  loads a bundled sqlite3.dll / libsqlite3 when present
 lib/sentry_client.dart read-only Sentry REST client (issues + release tags)
 lib/db.dart            SQLite core (schema/migrations); queries live in
 lib/db/                  ingest_store / issue_queries / analysis_store /
@@ -37,6 +42,8 @@ lib/ai/                  models / prompts / engines (CLI + Anthropic API)
 lib/github.dart        tickets via gh CLI (or GITHUB_TOKEN)
 lib/pr_maker.dart      worktree branch → claude edits → push → draft PR
 rules/                 default triage rules seeded on first run
+packaging/             build_bundle.sh (release zip contents) + per-OS launchers
+.github/workflows/     ci.yml (analyze + web build), release.yml (tag → binaries)
 ui/lib/                Flutter Web frontend, one file per screen:
                          main (app shell) / triage_page / issue_detail /
                          settings_page / help_page, shared pieces in
@@ -76,6 +83,12 @@ triage_state: `new` / `keep` / `hidden` / `known_noise` / `resolved`.
   English.
 - Keep everything configurable via `Config` (env > `.env` >
   `data/config.json`) — no hardcoded org/project/repo values.
+- Never resolve app files against the current directory: go through
+  `AppPaths.resolve()`, or a double-clicked release binary looks for them in
+  the wrong place.
+- Never call `Process.run` for an external CLI directly — use
+  `runCommand()` from `process_runner.dart` so a missing tool produces an
+  install hint instead of errno 2.
 
 ## Dev quickstart
 
@@ -88,3 +101,8 @@ dart run bin/serve.dart          # http://localhost:8787, serves UI + API
 # Checks:
 dart analyze lib bin && cd ui && flutter analyze
 ```
+
+Release bundles (what users actually download — binaries + prebuilt web, no
+Dart/Flutter needed) are assembled by `packaging/build_bundle.sh`; pushing a
+`v*` tag runs it on four platforms via `.github/workflows/release.yml`.
+Toolchain versions are pinned there — bump them deliberately.

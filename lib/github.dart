@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'process_runner.dart';
 
 /// Creates GitHub issues via the logged-in `gh` CLI (no token management
 /// needed). Optionally uses [token] (GH_TOKEN) without touching your global
@@ -20,11 +21,12 @@ class GithubTicketer {
     if (repo.isEmpty) {
       throw Exception('GITHUB_REPO is not set — configure it in Settings.');
     }
-    final result = await Process.run(
+    final result = await runCommand(
       'gh',
       ['issue', 'create', '--repo', repo, '--title', title, '--body', body],
       environment: token.isEmpty ? null : {'GH_TOKEN': token},
-    ).timeout(timeout);
+      timeout: timeout,
+    );
 
     if (result.exitCode != 0) {
       throw Exception(
@@ -99,11 +101,12 @@ class GithubTicketer {
       throw Exception('Cannot parse issue number from URL: $issueUrl');
     }
     final number = m.group(1)!;
-    final res = await Process.run(
+    final res = await runCommand(
       'gh',
       ['issue', 'comment', number, '--repo', repo, '--body', body],
       environment: token.isEmpty ? null : {'GH_TOKEN': token},
-    ).timeout(timeout);
+      timeout: timeout,
+    );
     if (res.exitCode != 0) {
       throw Exception(
           'gh issue comment failed (exit ${res.exitCode}): ${res.stderr}');
@@ -116,11 +119,12 @@ class GithubTicketer {
     final numMatch = RegExp(r'/(?:issues|pull)/(\d+)').firstMatch(url);
     if (numMatch == null) return 'unknown';
     final number = numMatch.group(1)!;
-    final res = await Process.run(
+    final res = await runCommand(
       'gh',
       [isPr ? 'pr' : 'issue', 'view', number, '--repo', repo, '--json', 'state'],
       environment: token.isEmpty ? null : {'GH_TOKEN': token},
-    ).timeout(const Duration(seconds: 30));
+      timeout: const Duration(seconds: 30),
+    );
     if (res.exitCode != 0) {
       final err = res.stderr.toString().toLowerCase();
       if (err.contains('not found') || err.contains('could not resolve')) {

@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'package:sentry_triage/api_server.dart';
+import 'package:sentry_triage/app_paths.dart';
 import 'package:sentry_triage/config.dart';
 import 'package:sentry_triage/db.dart';
 
 /// Backend entry point: serves the local API (and the built web UI).
 ///
 ///   dart run bin/serve.dart            # http://localhost:8787
-///   PORT=9000 dart run bin/serve.dart  # custom port
+///   PORT=9000 dart run bin/serve.dart  # custom port (or --port 9000)
 ///
 /// Boots with zero configuration — open the UI and fill in Settings, then hit
 /// "Sync from Sentry". No .env editing required.
@@ -19,13 +20,31 @@ Future<void> main(List<String> args) async {
   final db = TriageDb.open(cfg.dbPath);
   db.seedDefaultRules();
 
-  final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8787;
+  final requestedPort = _portFrom(args);
+  // Bind to localhost by default (a local tool, not a server); the Docker
+  // image sets HOST=0.0.0.0 so the port can be published.
+  final host = Platform.environment['HOST']?.trim().isNotEmpty == true
+      ? Platform.environment['HOST']!.trim()
+      : 'localhost';
 
-  const webRoot = 'ui/build/web';
-  final server = await ApiServer(db, cfg, webRoot: webRoot).start(port: port);
+  final webRoot = AppPaths.webRoot;
+  final apiServer = ApiServer(db, cfg, webRoot: webRoot);
 
-  final base = 'http://${server.address.host}:${server.port}';
+  final HttpServer server;
+  try {
+    server = await _listen(apiServer, host, requestedPort);
+  } on SocketException catch (e) {
+    stderr.writeln('❌ Could not start on $host:$requestedPort — ${e.osError?.message ?? e.message}.');
+    stderr.writeln('   Free the port, or pick another: --port 9000');
+    exit(1);
+  }
+
+  final base = 'http://${host == '0.0.0.0' ? 'localhost' : host}:${server.port}';
   stdout.writeln('🚀 sentry-ai-triage is running: $base');
+  if (server.port != requestedPort) {
+    stdout.writeln(
+        '   ℹ️ Port $requestedPort was busy — using ${server.port} instead.');
+  }
   final missing = cfg.missingForIngest;
   if (missing.isNotEmpty) {
     stdout.writeln(
@@ -51,6 +70,36 @@ Future<void> main(List<String> args) async {
     db.close();
     exit(0);
   });
+}
+
+/// Requested port: `--port N` (or `-p N`) > `PORT` env > 8787.
+int _portFrom(List<String> args) {
+  for (var i = 0; i < args.length; i++) {
+    final a = args[i];
+    if ((a == '--port' || a == '-p') && i + 1 < args.length) {
+      final v = int.tryParse(args[i + 1]);
+      if (v != null) return v;
+    }
+    if (a.startsWith('--port=')) {
+      final v = int.tryParse(a.substring('--port='.length));
+      if (v != null) return v;
+    }
+  }
+  return int.tryParse(Platform.environment['PORT'] ?? '') ?? 8787;
+}
+
+/// Start on [port], stepping up to the next free one when it is taken — a
+/// second copy of the tool (or any other :8787 process) shouldn't be a dead end.
+Future<HttpServer> _listen(ApiServer apiServer, String host, int port) async {
+  const maxAttempts = 20;
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await apiServer.start(host: host, port: port + attempt);
+    } on SocketException {
+      if (attempt == maxAttempts - 1) rethrow;
+    }
+  }
+  throw StateError('unreachable');
 }
 
 /// Best-effort cross-platform browser open; failure never affects the server.

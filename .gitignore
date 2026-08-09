@@ -1,6 +1,11 @@
 .env
 data/
 *.db
+dist/
+workspace/
+# Native SQLite staged by the release build (see packaging/build_bundle.sh)
+sqlite3.dll
+libsqlite3.so.0
 .dart_tool/
 build/
 ui/.dart_tool/

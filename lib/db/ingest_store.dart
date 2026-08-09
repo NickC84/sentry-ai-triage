@@ -64,9 +64,10 @@ extension IngestStore on TriageDb {
   /// match_type: title | culprit | any (either field matches). Native-stack
   /// signatures (libGLES_mali / MarkCompact / acquireLatestImage) usually live
   /// in culprit rather than title, hence 'any'.
-  void seedDefaultRules({String rulesPath = 'rules/default_rules.json'}) {
+  void seedDefaultRules({String? rulesPath}) {
+    final path = AppPaths.resolve(rulesPath ?? 'rules/default_rules.json');
     List<List<String>> defaults = [];
-    final f = File(rulesPath);
+    final f = File(path);
     if (f.existsSync()) {
       try {
         final doc = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
@@ -83,7 +84,7 @@ extension IngestStore on TriageDb {
             .where((r) => r[1].isNotEmpty)
             .toList();
       } catch (e) {
-        stderr.writeln('⚠️ Failed to parse $rulesPath: $e (skipping seed)');
+        stderr.writeln('⚠️ Failed to parse $path: $e (skipping seed)');
       }
     }
     for (final d in defaults) {

@@ -47,31 +47,92 @@ common for mobile / IoT / kiosk apps.
 
 | Tool | Needed for | Notes |
 |---|---|---|
-| [Dart SDK](https://dart.dev/get-dart) ≥ 3.5 | running the backend | required |
-| [Flutter](https://flutter.dev/docs/get-started/install) | building the web UI (first run only) | required |
 | [Claude Code CLI](https://claude.com/claude-code), logged in | AI analysis on your subscription | or use an Anthropic API key instead (Settings → Advanced) |
 | [`gh` CLI](https://cli.github.com), logged in | GitHub ticketing / draft PRs | optional — skip if you don't use the GitHub features |
 
-Works on macOS, Linux, and Windows. The only native dependency is SQLite:
-macOS ships it, most Linux distros have it (`apt install libsqlite3-0` if
-not), and on Windows drop [sqlite3.dll](https://www.sqlite.org/download.html)
-somewhere on your `PATH` (or next to the executable).
+That's it. **No Dart, no Flutter, no SQLite setup** — the release bundles
+below carry a compiled server, the prebuilt web UI, and (on Windows) the
+SQLite library.
 
-### 2 · Clone and launch
+### 2 · Get it running
+
+<table>
+<tr><th></th><th>You need</th><th>Best for</th></tr>
+<tr><td><b>A · Release download</b> (recommended)</td><td>nothing extra</td><td>most people</td></tr>
+<tr><td><b>B · Docker</b></td><td>Docker</td><td>teams already running containers, or putting it on a server</td></tr>
+<tr><td><b>C · From source</b></td><td>Dart + Flutter</td><td>hacking on the tool itself</td></tr>
+</table>
+
+#### A · Release download
+
+1. Grab the zip for your machine from
+   [**Releases**](https://github.com/NickC84/sentry-ai-triage/releases/latest) —
+   `macos-arm64` (Apple Silicon), `macos-x64` (Intel), `linux-x64`,
+   `windows-x64`.
+2. Unzip it anywhere you like.
+3. Launch:
+   - **macOS** — double-click **`start.command`**. If macOS blocks it as
+     unsigned, run once: `xattr -dr com.apple.quarantine /path/to/the/folder`
+   - **Linux** — `./start.sh` (or run `./sentry-triage` directly)
+   - **Windows** — double-click **`start.bat`**
+
+Your browser opens at `http://localhost:8787`; if that port is taken the
+server steps to the next free one and prints where it landed (`--port 9000`
+to choose). Everything it writes — `data/triage.db`, `data/config.json` —
+stays inside the unzipped folder, so deleting the folder uninstalls it.
+
+The headless CLIs (`sentry-triage-ingest`, `-analyze`, `-feature`) sit in the
+same folder, ready for cron.
+
+#### B · Docker
+
+Solves the toolchain in one shot, at the cost of two mounts: the AI runs on
+*your* Claude login and reads *your* app repo, and neither can live inside
+the image.
 
 ```bash
 git clone https://github.com/NickC84/sentry-ai-triage
+cd sentry-ai-triage
+echo "APP_REPO_PATH=/absolute/path/to/your/app-repo" > .env
+
+docker compose run --rm --entrypoint claude triage   # log in once; persists
+docker compose up -d --build                         # → http://localhost:8787
 ```
 
-Then launch — no config files to edit:
+`docker-compose.yml` mounts `./data` (database + settings), `~/.claude`
+(subscription credentials) and your app repo at `/workspace`. Plain
+`docker run` works too — see the compose file for the equivalent flags.
 
-- **macOS**: double-click **`start.command`** in Finder (or run `./start.sh`)
-- **Linux**: `./start.sh`
-- **Windows**: double-click **`start.bat`**
+#### C · From source
 
-The first run builds the web UI (takes a minute); after that it starts
-instantly. The server boots with zero configuration and opens your browser
-at `http://localhost:8787`.
+Needs the [Dart SDK](https://dart.dev/get-dart) ≥ 3.5 and
+[Flutter](https://flutter.dev/docs/get-started/install) 3.24 (the version CI
+pins; newer stable releases generally work).
+
+```bash
+git clone https://github.com/NickC84/sentry-ai-triage
+cd sentry-ai-triage
+./start.sh          # macOS/Linux — builds the web UI on first run
+                    # Windows: start.bat
+```
+
+Clone rather than downloading the source zip — GitHub's zip drops the
+executable bit, and `./start.sh` then fails with `permission denied`
+(`chmod +x start.sh start.command` fixes it).
+
+<details>
+<summary>Manual steps / building your own bundle</summary>
+
+```bash
+dart pub get
+cd ui && flutter pub get && flutter build web --no-web-resources-cdn && cd ..
+dart run bin/serve.dart   # PORT=9000 or --port 9000, NO_OPEN=1 to keep the browser closed
+
+# Same self-contained zip contents that CI publishes:
+packaging/build_bundle.sh --out dist/my-build
+```
+
+</details>
 
 ### 3 · Connect your Sentry (in the browser)
 
@@ -86,29 +147,22 @@ English and 繁體中文.
 
 ![Settings — token link, auto-detect, advanced collapsed](docs/screenshots/settings.png)
 
-<details>
-<summary>Manual steps (what the launcher does)</summary>
-
-```bash
-dart pub get
-cd ui && flutter pub get && flutter build web --no-web-resources-cdn && cd ..
-dart run bin/serve.dart   # PORT=9000 to change port, NO_OPEN=1 to keep the browser closed
-```
-
-</details>
-
 Prefer files? `cp .env.example .env` and edit — env vars > `.env` >
-in-app settings.
+in-app settings. Both live next to the executable (or the repo root when
+running from source); `TRIAGE_HOME` overrides that base directory.
 
 ## Headless CLI
 
-Everything the UI does is scriptable (cron-friendly):
+Everything the UI does is scriptable (cron-friendly). From a release bundle:
 
 ```bash
-dart run bin/ingest.dart     # fetch + rule triage + summary
-dart run bin/analyze.dart    # batch AI analysis over the threshold
-dart run bin/feature.dart    # feature feasibility analysis
+./sentry-triage-ingest      # fetch + rule triage + summary
+./sentry-triage-analyze     # batch AI analysis over the threshold
+./sentry-triage-feature     # feature feasibility analysis
 ```
+
+From source, the same three are `dart run bin/ingest.dart`,
+`bin/analyze.dart`, `bin/feature.dart`.
 
 ## How the AI engine works
 
@@ -125,18 +179,33 @@ English and Traditional Chinese.
 ## Data & privacy
 
 Everything stays local: SQLite in `data/`, config in `data/config.json`
-(gitignored, secrets masked in the UI). The only outbound calls are to your
-Sentry instance, Claude, and (optionally) GitHub.
+(gitignored, secrets masked in the UI), both next to the executable — or the
+repo root when running from source, or wherever `TRIAGE_HOME` points. The
+only outbound calls are to your Sentry instance, Claude, and (optionally)
+GitHub.
 
 ## Repo layout
 
 ```
-bin/       entry points: serve / ingest / analyze / feature
-lib/       backend: config, sentry client, ingest, db, AI, GitHub, API server
-rules/     default triage rules seeded on first run
-ui/        Flutter Web frontend (en / zh-Hant)
-docs/      original design spec (zh-Hant, historical)
+bin/        entry points: serve / ingest / analyze / feature
+lib/        backend: config, sentry client, ingest, db, AI, GitHub, API server
+rules/      default triage rules seeded on first run
+ui/         Flutter Web frontend (en / zh-Hant)
+packaging/  release bundle builder + per-OS launchers
+.github/    CI (analyze + build) and the release pipeline
+docs/       original design spec (zh-Hant, historical)
 ```
+
+## Releasing
+
+```bash
+git tag v0.2.0 && git push --tags
+```
+
+CI builds the web UI once, compiles binaries for macOS (arm64/x64), Linux
+and Windows, smoke-tests each bundle by running it from an unrelated
+directory, and attaches the zips plus `SHA256SUMS.txt` to the GitHub
+release. Toolchain versions are pinned in `.github/workflows/release.yml`.
 
 ## License
 
@@ -177,26 +246,78 @@ Sentry 拉取 → 規則過濾噪音 → 長期趨勢
 
 | 工具 | 用途 | 備註 |
 |---|---|---|
-| [Dart SDK](https://dart.dev/get-dart) ≥ 3.5 | 跑後端 | 必要 |
-| [Flutter](https://flutter.dev/docs/get-started/install) | 打包 Web UI（僅首次） | 必要 |
 | [Claude Code CLI](https://claude.com/claude-code)（已登入） | 用訂閱跑 AI 分析 | 也可改填 Anthropic API key（設定 → 進階） |
 | [`gh` CLI](https://cli.github.com)（已登入） | GitHub 開票／草稿 PR | 選用——不用 GitHub 功能可跳過 |
 
-macOS／Linux／Windows 都能跑。唯一的原生依賴是 SQLite：macOS 內建、多數 Linux 都有（沒有就 `apt install libsqlite3-0`）、Windows 把 [sqlite3.dll](https://www.sqlite.org/download.html) 放進 `PATH` 即可。
+就這樣。**不用裝 Dart、不用裝 Flutter、不用處理 SQLite**——下面的 release 壓縮檔裡已經有編譯好的伺服器、打包好的 Web UI，Windows 版連 SQLite 函式庫都附上了。
 
-### 2 · Clone 後一鍵啟動
+### 2 · 跑起來
+
+<table>
+<tr><th></th><th>需要什麼</th><th>適合誰</th></tr>
+<tr><td><b>A · 下載 release</b>（推薦）</td><td>什麼都不用裝</td><td>大多數人</td></tr>
+<tr><td><b>B · Docker</b></td><td>Docker</td><td>本來就在跑容器、或想放在伺服器上</td></tr>
+<tr><td><b>C · 從原始碼跑</b></td><td>Dart + Flutter</td><td>想改這個工具本身</td></tr>
+</table>
+
+#### A · 下載 release
+
+1. 到 [**Releases**](https://github.com/NickC84/sentry-ai-triage/releases/latest)
+   抓你機器對應的壓縮檔——`macos-arm64`（Apple Silicon）、`macos-x64`（Intel）、
+   `linux-x64`、`windows-x64`。
+2. 解壓縮到任何你喜歡的位置。
+3. 啟動：
+   - **macOS**——雙擊 **`start.command`**。若被 macOS 擋下（未簽章），執行一次：
+     `xattr -dr com.apple.quarantine /解壓縮後的資料夾`
+   - **Linux**——`./start.sh`（或直接跑 `./sentry-triage`）
+   - **Windows**——雙擊 **`start.bat`**
+
+瀏覽器會開啟 `http://localhost:8787`；如果這個 port 被佔用，伺服器會自動往下找一個沒被用的，並印出實際位址（也可用 `--port 9000` 指定）。所有它寫出來的東西（`data/triage.db`、`data/config.json`）都在解壓縮的資料夾裡——刪掉資料夾就等於解除安裝。
+
+無介面 CLI（`sentry-triage-ingest`、`-analyze`、`-feature`）也在同一個資料夾裡，可直接排程。
+
+#### B · Docker
+
+一次解決所有工具鏈問題，代價是兩個 mount：AI 跑在**你的** Claude 登入上、讀**你的** App repo，這兩樣都不可能包進 image 裡。
 
 ```bash
 git clone https://github.com/NickC84/sentry-ai-triage
+cd sentry-ai-triage
+echo "APP_REPO_PATH=/你的/app-repo/絕對路徑" > .env
+
+docker compose run --rm --entrypoint claude triage   # 登入一次，之後會保留
+docker compose up -d --build                         # → http://localhost:8787
 ```
 
-啟動——不用編輯任何設定檔：
+`docker-compose.yml` 會掛載 `./data`（資料庫與設定）、`~/.claude`（訂閱憑證）以及你的 App repo（掛到 `/workspace`）。想用純 `docker run` 也可以，參數對照看 compose 檔。
 
-- **macOS**：Finder 裡雙擊 **`start.command`**（或跑 `./start.sh`）
-- **Linux**：`./start.sh`
-- **Windows**：雙擊 **`start.bat`**
+#### C · 從原始碼跑
 
-首次啟動會打包 Web UI（約一分鐘），之後秒開。伺服器零設定開機，瀏覽器自動開啟 `http://localhost:8787`。
+需要 [Dart SDK](https://dart.dev/get-dart) ≥ 3.5 與
+[Flutter](https://flutter.dev/docs/get-started/install) 3.24（CI 鎖的版本，較新的 stable 通常也能用）。
+
+```bash
+git clone https://github.com/NickC84/sentry-ai-triage
+cd sentry-ai-triage
+./start.sh          # macOS/Linux——首次啟動會打包 Web UI
+                    # Windows：start.bat
+```
+
+請用 clone，不要下載原始碼 zip——GitHub 的 zip 會掉執行權限，`./start.sh` 會直接 `permission denied`（`chmod +x start.sh start.command` 可修）。
+
+<details>
+<summary>手動步驟／自己打包 bundle</summary>
+
+```bash
+dart pub get
+cd ui && flutter pub get && flutter build web --no-web-resources-cdn && cd ..
+dart run bin/serve.dart   # PORT=9000 或 --port 9000；NO_OPEN=1 不自動開瀏覽器
+
+# 產出跟 CI 一樣的自帶一切壓縮檔內容：
+packaging/build_bundle.sh --out dist/my-build
+```
+
+</details>
 
 ### 3 · 在瀏覽器裡連上你的 Sentry
 
@@ -208,13 +329,15 @@ git clone https://github.com/NickC84/sentry-ai-triage
 
 ## 無介面 CLI
 
-UI 能做的都能用指令跑（適合排程）：
+UI 能做的都能用指令跑（適合排程）。用 release bundle 的話：
 
 ```bash
-dart run bin/ingest.dart     # 拉取 + 規則分流 + 摘要
-dart run bin/analyze.dart    # 達門檻的 issue 批次 AI 分析
-dart run bin/feature.dart    # 需求可行性分析
+./sentry-triage-ingest      # 拉取 + 規則分流 + 摘要
+./sentry-triage-analyze     # 達門檻的 issue 批次 AI 分析
+./sentry-triage-feature     # 需求可行性分析
 ```
+
+從原始碼跑則是 `dart run bin/ingest.dart`、`bin/analyze.dart`、`bin/feature.dart`。
 
 ## AI 引擎怎麼運作
 
@@ -224,7 +347,15 @@ dart run bin/feature.dart    # 需求可行性分析
 
 ## 資料與隱私
 
-一切都在本地：SQLite 在 `data/`、設定在 `data/config.json`（已 gitignore，UI 裡機密欄位有遮罩）。唯二的對外連線是你的 Sentry、Claude，以及（選用的）GitHub。
+一切都在本地：SQLite 在 `data/`、設定在 `data/config.json`（已 gitignore，UI 裡機密欄位有遮罩），位置固定在執行檔旁邊（從原始碼跑就是 repo 根目錄），可用 `TRIAGE_HOME` 改。唯二的對外連線是你的 Sentry、Claude，以及（選用的）GitHub。
+
+## 發佈新版
+
+```bash
+git tag v0.2.0 && git push --tags
+```
+
+CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
 
 ## 授權
 

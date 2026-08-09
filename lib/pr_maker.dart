@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'process_runner.dart';
+
 /// Result of a draft-PR run.
 class PrResult {
   final String prUrl;
@@ -78,7 +80,7 @@ class PrMaker {
         approach: approach,
         affectedAreas: affectedAreas,
       );
-      final res = await Process.run(
+      final res = await runCommand(
         cliCommand,
         [
           '-p', prompt,
@@ -86,7 +88,8 @@ class PrMaker {
           '--model', model,
         ],
         workingDirectory: worktree,
-      ).timeout(timeout);
+        timeout: timeout,
+      );
       if (res.exitCode != 0) {
         throw Exception(
             '$cliCommand failed (exit ${res.exitCode}): ${res.stderr}');
@@ -151,7 +154,7 @@ class PrMaker {
     required String body,
     required String cwd,
   }) async {
-    final res = await Process.run(
+    final res = await runCommand(
       'gh',
       [
         'pr', 'create',
@@ -163,7 +166,8 @@ class PrMaker {
       ],
       workingDirectory: cwd,
       environment: token.isEmpty ? null : {'GH_TOKEN': token},
-    ).timeout(const Duration(seconds: 60));
+      timeout: const Duration(seconds: 60),
+    );
     if (res.exitCode != 0) {
       throw Exception(
           'gh pr create failed (exit ${res.exitCode}): ${res.stderr}');
@@ -177,8 +181,8 @@ class PrMaker {
   }
 
   Future<String> _git(List<String> args, {bool allowFail = false}) async {
-    final res =
-        await Process.run('git', args).timeout(const Duration(seconds: 120));
+    final res = await runCommand('git', args,
+        timeout: const Duration(seconds: 120));
     if (res.exitCode != 0 && !allowFail) {
       throw Exception(
           'git ${args.join(' ')} failed (exit ${res.exitCode}): ${res.stderr}');

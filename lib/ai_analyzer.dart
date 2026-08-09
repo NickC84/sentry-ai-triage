@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'process_runner.dart';
+
 part 'ai/models.dart';
 part 'ai/prompts.dart';
 part 'ai/engines.dart';

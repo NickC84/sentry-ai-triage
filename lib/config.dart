@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'app_paths.dart';
+
 /// Configuration loader / store.
 ///
 /// Priority (highest wins): environment variables > .env file > data/config.json.
@@ -76,7 +78,9 @@ class Config {
     required this.gitRemote,
   });
 
-  static const configJsonPath = 'data/config.json';
+  /// Resolved against the app root, so a double-clicked release binary keeps
+  /// its settings next to itself instead of in whatever directory it inherited.
+  static String get configJsonPath => AppPaths.resolve('data/config.json');
 
   /// Keys the Settings UI may read/write (stored in data/config.json).
   static const editableKeys = {
@@ -108,7 +112,7 @@ class Config {
   /// [missingForIngest] so the server can boot with zero config and let the
   /// user fill things in from the Settings page.
   static Config load() {
-    final envFile = _readEnvFile('.env');
+    final envFile = _readEnvFile(AppPaths.resolve('.env'));
     final json = _readConfigJson();
 
     String opt(String k, String d) {
@@ -121,7 +125,7 @@ class Config {
       org: opt('SENTRY_ORG', ''),
       project: opt('SENTRY_PROJECT', ''),
       token: opt('SENTRY_TOKEN', ''),
-      dbPath: opt('DB_PATH', 'data/triage.db'),
+      dbPath: AppPaths.resolve(opt('DB_PATH', 'data/triage.db')),
       statsPeriodDays: int.tryParse(opt('STATS_PERIOD_DAYS', '90')) ?? 90,
       maxReleaseLookups: int.tryParse(opt('MAX_RELEASE_LOOKUPS', '50')) ?? 50,
       aiMode: opt('AI_MODE', 'claude_cli'),

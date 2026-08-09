@@ -1,0 +1,37 @@
+name: CI
+
+# Cheap insurance for the release pipeline: if analysis or the web build
+# breaks here, tagging a release would have failed halfway through.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      # The Flutter SDK bundles the matching Dart SDK, so one install covers
+      # both the backend and the UI — and pins them to the same pair the
+      # release workflow uses.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Backend
+        run: |
+          dart pub get
+          dart analyze lib bin
+      - name: UI
+        run: |
+          cd ui
+          flutter pub get
+          flutter analyze
+          flutter build web --no-web-resources-cdn
