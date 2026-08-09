@@ -103,9 +103,11 @@ docker run -d -p 8787:8787 \
   ghcr.io/nickc84/sentry-ai-triage:latest
 ```
 
-The published image is `linux/amd64`; on ARM hardware use the `linux-arm64`
-release bundle instead. To build it yourself, `docker-compose.yml` in the
-repo does the same thing from source (`docker compose up -d --build`).
+The published image is `linux/amd64`. On Apple Silicon add
+`--platform linux/amd64` to both commands (Docker Desktop emulates it); on
+ARM servers use the `linux-arm64` release bundle instead. To build a native
+image yourself, `docker-compose.yml` does the same thing from source
+(`docker compose up -d --build`).
 
 #### C · From source
 
@@ -219,11 +221,10 @@ unrelated directory, pushes the container image to GHCR, and attaches the
 zips plus `SHA256SUMS.txt` to the GitHub release. Toolchain versions are
 pinned in `.github/workflows/release.yml`.
 
-**One-time, after the very first release:** GHCR creates the package
-*private*, and no API can change that — open
-`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`
-→ Change visibility → Public, or nobody else can `docker pull` it. The
-release job prints the link in its summary.
+The GHCR package published from a public repo is publicly pullable as-is —
+verified by pulling `v0.2.1` anonymously. GHCR exposes no API for package
+visibility, so if one ever does land private, it is a manual flip at
+`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`.
 
 ## License
 
@@ -311,7 +312,7 @@ docker run -d -p 8787:8787 \
   ghcr.io/nickc84/sentry-ai-triage:latest
 ```
 
-發佈的 image 是 `linux/amd64`；ARM 機器請改用 `linux-arm64` 的 release 壓縮檔。想自己 build，repo 裡的 `docker-compose.yml` 會從原始碼做同一件事（`docker compose up -d --build`）。
+發佈的 image 是 `linux/amd64`。Apple Silicon 請在兩行指令都加上 `--platform linux/amd64`（Docker Desktop 會模擬）；ARM 伺服器則建議改用 `linux-arm64` 的 release 壓縮檔。想 build 原生 image，`docker-compose.yml` 會從原始碼做同一件事（`docker compose up -d --build`）。
 
 #### C · 從原始碼跑
 
@@ -381,9 +382,8 @@ git tag v0.2.0 && git push --tags
 
 CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux（x64／arm64）／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，推送 container image 到 GHCR，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
 
-**第一次發佈後要做一次**：GHCR 建立的 package 預設是 private，而且沒有任何 API 可以改——到
-`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`
-→ Change visibility → Public，否則別人 `docker pull` 不到。release job 的 summary 會把這個連結印出來。
+公開 repo 推上 GHCR 的 package 本身就是公開可 pull 的——已用匿名 pull `v0.2.1` 驗證過。GHCR 沒有改 visibility 的 API，萬一哪天真的變成 private，只能手動到
+`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings` 切換。
 
 ## 授權
 
