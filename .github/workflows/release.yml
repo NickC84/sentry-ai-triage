@@ -182,6 +182,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # GHCR creates packages private, and there is no API to change that —
+      # it is a one-time click. Surfacing it here beats discovering it from a
+      # user's "denied" report.
+      - name: Remind about package visibility
+        run: |
+          {
+            echo "### Container image pushed"
+            echo ""
+            echo '`docker pull ${{ env.IMAGE }}:${{ env.TAG }}`'
+            echo ""
+            echo "**First release only:** a new GHCR package starts *private*, so"
+            echo "\`docker pull\` fails for everyone else. Flip it once at"
+            echo "<https://github.com/users/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/settings>"
+            echo "→ Danger Zone → Change visibility → Public."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: Publish release
     needs: bundle

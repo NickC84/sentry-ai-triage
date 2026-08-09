@@ -214,9 +214,16 @@ git tag v0.2.0 && git push --tags
 ```
 
 CI builds the web UI once, compiles binaries for macOS (arm64/x64), Linux
-and Windows, smoke-tests each bundle by running it from an unrelated
-directory, and attaches the zips plus `SHA256SUMS.txt` to the GitHub
-release. Toolchain versions are pinned in `.github/workflows/release.yml`.
+(x64/arm64) and Windows, smoke-tests each bundle by running it from an
+unrelated directory, pushes the container image to GHCR, and attaches the
+zips plus `SHA256SUMS.txt` to the GitHub release. Toolchain versions are
+pinned in `.github/workflows/release.yml`.
+
+**One-time, after the very first release:** GHCR creates the package
+*private*, and no API can change that — open
+`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`
+→ Change visibility → Public, or nobody else can `docker pull` it. The
+release job prints the link in its summary.
 
 ## License
 
@@ -372,7 +379,11 @@ UI 能做的都能用指令跑（適合排程）。用 release bundle 的話：
 git tag v0.2.0 && git push --tags
 ```
 
-CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
+CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux（x64／arm64）／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，推送 container image 到 GHCR，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
+
+**第一次發佈後要做一次**：GHCR 建立的 package 預設是 private，而且沒有任何 API 可以改——到
+`https://github.com/users/<owner>/packages/container/sentry-ai-triage/settings`
+→ Change visibility → Public，否則別人 `docker pull` 不到。release job 的 summary 會把這個連結印出來。
 
 ## 授權
 
