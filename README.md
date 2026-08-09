@@ -212,7 +212,7 @@ docs/       original design spec (zh-Hant, historical)
 ## Releasing
 
 ```bash
-git tag v0.2.0 && git push --tags
+git tag v1.2.0 && git push --tags
 ```
 
 CI builds the web UI once, compiles binaries for macOS (arm64/x64), Linux
@@ -377,7 +377,7 @@ UI 能做的都能用指令跑（適合排程）。用 release bundle 的話：
 ## 發佈新版
 
 ```bash
-git tag v0.2.0 && git push --tags
+git tag v1.2.0 && git push --tags
 ```
 
 CI 會打包一次 Web UI、編出 macOS（arm64／x64）／Linux（x64／arm64）／Windows 的原生執行檔，並在**不相干的目錄下實際跑一次**做煙霧測試，推送 container image 到 GHCR，最後把壓縮檔與 `SHA256SUMS.txt` 掛到 GitHub release。工具鏈版本鎖在 `.github/workflows/release.yml`。
