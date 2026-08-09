@@ -58,7 +58,10 @@ jobs:
         include:
           - os: macos-latest
             target: macos-arm64
-          - os: macos-13
+          # macos-13 was retired; macos-15-intel is the standard (free for
+          # public repos) Intel replacement. Jobs on a retired label queue
+          # forever rather than failing, so this is worth a comment.
+          - os: macos-15-intel
             target: macos-x64
           - os: ubuntu-22.04   # oldest supported glibc — newer distros run this fine
             target: linux-x64
